@@ -181,9 +181,9 @@ namespace TalentTrade
 
         // --- Def exchange ---
 
-        public static string BuildDefManifest(string sessionId, string senderUuid, string b64CompressedDefList)
+        public static string BuildDefManifest(string sessionId, string senderUuid, string targetUuid, string b64CompressedDefList)
         {
-            return Join("defs", sessionId, senderUuid, b64CompressedDefList);
+            return Join("defs", sessionId, senderUuid, targetUuid, b64CompressedDefList);
         }
 
         public static string BuildDefAck(string sessionId, string senderUuid, string b64MissingDefs)

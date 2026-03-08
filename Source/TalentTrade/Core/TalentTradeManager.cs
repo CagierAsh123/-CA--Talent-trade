@@ -31,6 +31,11 @@ namespace TalentTrade
         private static readonly object BlobLock = new object();
         private static readonly Dictionary<string, string[]> PendingBlobs = new Dictionary<string, string[]>();
 
+        // --- Def manifest exchange ---
+        private static readonly object DefExchangeLock = new object();
+        private static readonly Dictionary<string, TransferReport> PendingDefReports = new Dictionary<string, TransferReport>();
+        private static readonly Dictionary<string, Action<TransferReport>> DefReportCallbacks = new Dictionary<string, Action<TransferReport>>();
+
         public static void Initialize(Client client)
         {
             if (initialized || client == null) return;
@@ -151,6 +156,50 @@ namespace TalentTrade
             }
         }
 
+        // --- Def exchange API ---
+
+        /// <summary>
+        /// Initiate a def compatibility check with a target player before sending a pawn.
+        /// Collects the pawn's referenced defs, sends them to the target, and invokes the callback
+        /// when the target responds with their missing defs report.
+        /// </summary>
+        public static string RequestDefCheck(Pawn pawn, string targetUuid, Action<TransferReport> onResult)
+        {
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid) || string.IsNullOrEmpty(targetUuid)) return null;
+
+            string sessionId = Guid.NewGuid().ToString("N").Substring(0, 12);
+            DefManifest manifest = DefManifestHelper.CollectFromPawn(pawn);
+            string defListStr = DefManifestHelper.SerializeManifest(manifest);
+            string b64DefList = TalentTradeTransport.Compress(defListStr);
+
+            if (onResult != null)
+            {
+                lock (DefExchangeLock)
+                {
+                    DefReportCallbacks[sessionId] = onResult;
+                }
+            }
+
+            string msg = TalentTradeProtocol.BuildDefManifest(sessionId, localUuid, targetUuid, b64DefList);
+            SendProtocol(msg);
+            return sessionId;
+        }
+
+        /// <summary>
+        /// Get a previously received def report by session ID. Returns null if not yet received.
+        /// </summary>
+        public static TransferReport GetDefReport(string sessionId)
+        {
+            lock (DefExchangeLock)
+            {
+                TransferReport report;
+                if (PendingDefReports.TryGetValue(sessionId, out report))
+                    return report;
+                return null;
+            }
+        }
+
         // --- Internal ---
 
         private static void Clear()
@@ -160,6 +209,7 @@ namespace TalentTrade
             lock (TradeLock) { ActiveTrades.Clear(); }
             lock (BlobLock) { PendingBlobs.Clear(); }
             lock (ProcessedLock) { ProcessedProtocolKeys.Clear(); }
+            lock (DefExchangeLock) { PendingDefReports.Clear(); DefReportCallbacks.Clear(); }
             lock (MainThreadQueue) { MainThreadQueue.Clear(); }
             TalentTradeTransport.Clear();
         }
@@ -480,12 +530,87 @@ namespace TalentTrade
 
         private static void HandleDefManifest(string[] parts)
         {
-            // TODO: Phase 2
+            // PHXTT|v1|defs|sessionId|senderUuid|targetUuid|b64CompressedDefList
+            if (parts.Length < 7) return;
+            string sessionId = parts[3];
+            string senderUuid = parts[4];
+            string targetUuid = parts[5];
+            string b64DefList = parts[6];
+
+            // Only process if we are the target
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid) || targetUuid != localUuid) return;
+
+            // Decompress and deserialize the manifest
+            string defListStr;
+            try
+            {
+                defListStr = TalentTradeTransport.Decompress(b64DefList);
+            }
+            catch
+            {
+                defListStr = b64DefList; // fallback: maybe it wasn't compressed
+            }
+
+            DefManifest manifest = DefManifestHelper.DeserializeManifest(defListStr);
+            TransferReport report = DefManifestHelper.CheckCompatibility(manifest);
+
+            // Collect our missing defs and send back
+            string missingStr = string.Empty;
+            if (report.HasMissing)
+            {
+                missingStr = string.Join("\n", report.Missing.ToArray());
+            }
+
+            string b64Missing = TalentTradeTransport.Compress(missingStr);
+            string ackMsg = TalentTradeProtocol.BuildDefAck(sessionId, localUuid, b64Missing);
+            SendProtocol(ackMsg);
         }
 
         private static void HandleDefAck(string[] parts)
         {
-            // TODO: Phase 2
+            // PHXTT|v1|dack|sessionId|senderUuid|b64MissingDefs
+            if (parts.Length < 6) return;
+            string sessionId = parts[3];
+            string b64Missing = parts[5];
+
+            string missingStr;
+            try
+            {
+                missingStr = TalentTradeTransport.Decompress(b64Missing);
+            }
+            catch
+            {
+                missingStr = b64Missing;
+            }
+
+            // Build a report from the response
+            var report = new TransferReport();
+            if (!string.IsNullOrEmpty(missingStr))
+            {
+                string[] lines = missingStr.Split('\n');
+                foreach (string line in lines)
+                {
+                    if (!string.IsNullOrEmpty(line))
+                        report.Missing.Add(line);
+                }
+            }
+
+            // Store the report and invoke callback if registered
+            Action<TransferReport> callback = null;
+            lock (DefExchangeLock)
+            {
+                PendingDefReports[sessionId] = report;
+                if (DefReportCallbacks.TryGetValue(sessionId, out callback))
+                {
+                    DefReportCallbacks.Remove(sessionId);
+                }
+            }
+
+            if (callback != null)
+            {
+                EnqueueMainThread(() => callback(report));
+            }
         }
 
         private static void HandleBlobPart(string[] parts)
