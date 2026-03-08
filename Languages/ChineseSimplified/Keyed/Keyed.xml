@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <!-- Tab -->
+  <TalentTrade_tab>人才贸易</TalentTrade_tab>
+  <TalentTrade_pleaseLogIn>请先登录 Phinix 聊天室。</TalentTrade_pleaseLogIn>
+  <TalentTrade_comingSoon>即将推出…</TalentTrade_comingSoon>
+
+  <!-- Sub tabs -->
+  <TalentTrade_subTabDirectTrade>直接交易</TalentTrade_subTabDirectTrade>
+  <TalentTrade_subTabMarket>公共市场</TalentTrade_subTabMarket>
+  <TalentTrade_subTabRental>租借</TalentTrade_subTabRental>
+
+  <!-- Settings -->
+  <TalentTrade_settingsCategory>Phinix 人才贸易</TalentTrade_settingsCategory>
+  <TalentTrade_settingNotifications>启用交易消息提醒</TalentTrade_settingNotifications>
+  <TalentTrade_settingNotificationsDesc>收到交易相关消息时显示游戏内提醒。</TalentTrade_settingNotificationsDesc>
+
+  <!-- Common -->
+  <TalentTrade_ageUnit>岁</TalentTrade_ageUnit>
+  <TalentTrade_silver>银子</TalentTrade_silver>
+  <TalentTrade_confirm>确认</TalentTrade_confirm>
+  <TalentTrade_cancel>取消</TalentTrade_cancel>
+  <TalentTrade_refresh>刷新</TalentTrade_refresh>
+  <TalentTrade_search>搜索</TalentTrade_search>
+  <TalentTrade_selectPawn>选择殖民者</TalentTrade_selectPawn>
+  <TalentTrade_noPawnsAvailable>没有可用的殖民者。</TalentTrade_noPawnsAvailable>
+  <TalentTrade_select>选择</TalentTrade_select>
+
+  <!-- Market -->
+  <TalentTrade_marketListTitle>市场列表</TalentTrade_marketListTitle>
+  <TalentTrade_marketMyListings>我的挂牌</TalentTrade_marketMyListings>
+  <TalentTrade_marketPrice>价格</TalentTrade_marketPrice>
+  <TalentTrade_marketSell>上架出售</TalentTrade_marketSell>
+  <TalentTrade_marketDelist>下架</TalentTrade_marketDelist>
+  <TalentTrade_marketBuy>购买</TalentTrade_marketBuy>
+  <TalentTrade_marketSeller>卖家: {0}</TalentTrade_marketSeller>
+  <TalentTrade_marketPriceFormat>{0} 银</TalentTrade_marketPriceFormat>
+  <TalentTrade_marketNoListings>暂无挂牌。</TalentTrade_marketNoListings>
+  <TalentTrade_marketBuyConfirm>确认购买 {0}？价格: {1} 银</TalentTrade_marketBuyConfirm>
+
+  <!-- Direct Trade -->
+  <TalentTrade_tradeWith>交易</TalentTrade_tradeWith>
+  <TalentTrade_tradeOnlineUsers>在线用户</TalentTrade_tradeOnlineUsers>
+  <TalentTrade_tradeActiveTrades>活跃交易</TalentTrade_tradeActiveTrades>
+  <TalentTrade_tradeOpen>打开</TalentTrade_tradeOpen>
+  <TalentTrade_tradeStatus>状态: {0}</TalentTrade_tradeStatus>
+  <TalentTrade_tradeNoActive>没有活跃的交易。</TalentTrade_tradeNoActive>
+  <TalentTrade_tradeRequestSent>已向 {0} 发送交易请求。</TalentTrade_tradeRequestSent>
+  <TalentTrade_tradeRequestReceived>{0} 向你发起了交易请求。</TalentTrade_tradeRequestReceived>
+  <TalentTrade_tradeMyOffer>我的报价</TalentTrade_tradeMyOffer>
+  <TalentTrade_tradeTheirOffer>对方报价</TalentTrade_tradeTheirOffer>
+  <TalentTrade_tradeAddPawn>+ 添加殖民者</TalentTrade_tradeAddPawn>
+  <TalentTrade_tradeSilverAmount>银子数量</TalentTrade_tradeSilverAmount>
+  <TalentTrade_tradeLock>锁定确认</TalentTrade_tradeLock>
+  <TalentTrade_tradeWaitingLock>等待对方确认…</TalentTrade_tradeWaitingLock>
+
+  <!-- Rental -->
+  <TalentTrade_rentalListTitle>出租列表</TalentTrade_rentalListTitle>
+  <TalentTrade_rentalMyListings>我的出租</TalentTrade_rentalMyListings>
+  <TalentTrade_rentalMyRentals>我租的</TalentTrade_rentalMyRentals>
+  <TalentTrade_rentalPricePerDay>日租金</TalentTrade_rentalPricePerDay>
+  <TalentTrade_rentalMaxDays>最长天数</TalentTrade_rentalMaxDays>
+  <TalentTrade_rentalDeposit>押金</TalentTrade_rentalDeposit>
+  <TalentTrade_rentalList>上架出租</TalentTrade_rentalList>
+  <TalentTrade_rentalDelist>下架</TalentTrade_rentalDelist>
+  <TalentTrade_rentalRent>租借</TalentTrade_rentalRent>
+  <TalentTrade_rentalReturn>归还</TalentTrade_rentalReturn>
+  <TalentTrade_rentalDaysLeft>剩余 {0} 天</TalentTrade_rentalDaysLeft>
+  <TalentTrade_rentalOwner>出租方: {0}</TalentTrade_rentalOwner>
+  <TalentTrade_rentalPriceFormat>{0} 银/天</TalentTrade_rentalPriceFormat>
+  <TalentTrade_rentalDepositFormat>押金: {0} 银</TalentTrade_rentalDepositFormat>
+  <TalentTrade_rentalNoListings>暂无出租。</TalentTrade_rentalNoListings>
+  <TalentTrade_rentalPawnDied>你的殖民者 {0} 在租借期间死亡，已复活归还。</TalentTrade_rentalPawnDied>
+  <TalentTrade_rentalPawnDiedTitle>租借殖民者死亡</TalentTrade_rentalPawnDiedTitle>
+  <TalentTrade_rentalExpired>殖民者 {0} 的租借到期，已自动归还。</TalentTrade_rentalExpired>
+  <TalentTrade_rentalExpiredTitle>租借到期</TalentTrade_rentalExpiredTitle>
+
+  <!-- Pawn transfer -->
+  <TalentTrade_transferReport>即将发送殖民者 "{0}" 给 {1}</TalentTrade_transferReport>
+  <TalentTrade_transferRaceOk>✓ 种族: {0} — 对方已安装</TalentTrade_transferRaceOk>
+  <TalentTrade_transferRaceFail>✗ 种族: {0} — 对方未安装，无法交易</TalentTrade_transferRaceFail>
+  <TalentTrade_transferEquipRemoved>✗ 装备: {0} — 对方未安装，将留在本地</TalentTrade_transferEquipRemoved>
+  <TalentTrade_transferHediffRemoved>✗ 植入体: {0} — 对方未安装，将被移除</TalentTrade_transferHediffRemoved>
+  <TalentTrade_transferTraitOk>✓ 特性: {0} — 对方已安装</TalentTrade_transferTraitOk>
+  <TalentTrade_transferTraitRemoved>✗ 特性: {0} — 对方未安装，将被移除</TalentTrade_transferTraitRemoved>
+  <TalentTrade_transferConfirmSend>确认发送</TalentTrade_transferConfirmSend>
+
+  <!-- Notifications -->
+  <TalentTrade_pawnReceivedTitle>收到殖民者</TalentTrade_pawnReceivedTitle>
+  <TalentTrade_pawnReceivedMessage>你收到了殖民者 {0}。</TalentTrade_pawnReceivedMessage>
+</LanguageData>

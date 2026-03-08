@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <RootNamespace>TalentTrade</RootNamespace>
+    <AssemblyName>TalentTrade</AssemblyName>
+    <LangVersion>7.3</LangVersion>
+    <OutputPath Condition="'$(Configuration)' == 'Debug'">bin\Debug\</OutputPath>
+    <OutputPath Condition="'$(Configuration)' == 'Release'">..\..\Assemblies\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Harmony -->
+    <Reference Include="0Harmony">
+      <HintPath>..\..\Assemblies\0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- RimWorld -->
+    <Reference Include="Assembly-CSharp">
+      <HintPath>B:\SteamLibrary\steamapps\common\RimWorld\RimWorldWin64_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- Unity -->
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>B:\SteamLibrary\steamapps\common\RimWorld\RimWorldWin64_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>B:\SteamLibrary\steamapps\common\RimWorld\RimWorldWin64_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>B:\SteamLibrary\steamapps\common\RimWorld\RimWorldWin64_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- Phinix -->
+    <Reference Include="PhinixClient">
+      <HintPath>B:\rimworld-code\_SourceCode\phinix\1.6\Assemblies\9-PhinixClient.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Utils">
+      <HintPath>B:\rimworld-code\_SourceCode\phinix\Common\Assemblies\3-Utils.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Chat">
+      <HintPath>B:\rimworld-code\_SourceCode\phinix\Common\Assemblies\7-Chat.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Trading">
+      <HintPath>B:\rimworld-code\_SourceCode\phinix\Common\Assemblies\8-Trading.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- .NET -->
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.IO.Compression" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <!-- Tab -->
+  <TalentTrade_tab>Talent Trade</TalentTrade_tab>
+  <TalentTrade_pleaseLogIn>Please log in to Phinix chat first.</TalentTrade_pleaseLogIn>
+  <TalentTrade_comingSoon>Coming soon...</TalentTrade_comingSoon>
+
+  <!-- Sub tabs -->
+  <TalentTrade_subTabDirectTrade>Direct Trade</TalentTrade_subTabDirectTrade>
+  <TalentTrade_subTabMarket>Market</TalentTrade_subTabMarket>
+  <TalentTrade_subTabRental>Rental</TalentTrade_subTabRental>
+
+  <!-- Settings -->
+  <TalentTrade_settingsCategory>Phinix Talent Trade</TalentTrade_settingsCategory>
+  <TalentTrade_settingNotifications>Enable trade notifications</TalentTrade_settingNotifications>
+  <TalentTrade_settingNotificationsDesc>Show in-game messages for trade events.</TalentTrade_settingNotificationsDesc>
+
+  <!-- Common -->
+  <TalentTrade_ageUnit> yrs</TalentTrade_ageUnit>
+  <TalentTrade_silver>Silver</TalentTrade_silver>
+  <TalentTrade_confirm>Confirm</TalentTrade_confirm>
+  <TalentTrade_cancel>Cancel</TalentTrade_cancel>
+  <TalentTrade_refresh>Refresh</TalentTrade_refresh>
+  <TalentTrade_search>Search</TalentTrade_search>
+  <TalentTrade_selectPawn>Select Colonist</TalentTrade_selectPawn>
+  <TalentTrade_noPawnsAvailable>No colonists available.</TalentTrade_noPawnsAvailable>
+  <TalentTrade_select>Select</TalentTrade_select>
+
+  <!-- Market -->
+  <TalentTrade_marketListTitle>Market Listings</TalentTrade_marketListTitle>
+  <TalentTrade_marketMyListings>My Listings</TalentTrade_marketMyListings>
+  <TalentTrade_marketPrice>Price</TalentTrade_marketPrice>
+  <TalentTrade_marketSell>List for Sale</TalentTrade_marketSell>
+  <TalentTrade_marketDelist>Delist</TalentTrade_marketDelist>
+  <TalentTrade_marketBuy>Buy</TalentTrade_marketBuy>
+  <TalentTrade_marketSeller>Seller: {0}</TalentTrade_marketSeller>
+  <TalentTrade_marketPriceFormat>{0} silver</TalentTrade_marketPriceFormat>
+  <TalentTrade_marketNoListings>No listings available.</TalentTrade_marketNoListings>
+  <TalentTrade_marketBuyConfirm>Buy {0}? Price: {1} silver</TalentTrade_marketBuyConfirm>
+
+  <!-- Direct Trade -->
+  <TalentTrade_tradeWith>Trade</TalentTrade_tradeWith>
+  <TalentTrade_tradeOnlineUsers>Online Users</TalentTrade_tradeOnlineUsers>
+  <TalentTrade_tradeActiveTrades>Active Trades</TalentTrade_tradeActiveTrades>
+  <TalentTrade_tradeOpen>Open</TalentTrade_tradeOpen>
+  <TalentTrade_tradeStatus>Status: {0}</TalentTrade_tradeStatus>
+  <TalentTrade_tradeNoActive>No active trades.</TalentTrade_tradeNoActive>
+  <TalentTrade_tradeRequestSent>Trade request sent to {0}.</TalentTrade_tradeRequestSent>
+  <TalentTrade_tradeRequestReceived>{0} sent you a trade request.</TalentTrade_tradeRequestReceived>
+  <TalentTrade_tradeMyOffer>My Offer</TalentTrade_tradeMyOffer>
+  <TalentTrade_tradeTheirOffer>Their Offer</TalentTrade_tradeTheirOffer>
+  <TalentTrade_tradeAddPawn>+ Add Colonist</TalentTrade_tradeAddPawn>
+  <TalentTrade_tradeSilverAmount>Silver Amount</TalentTrade_tradeSilverAmount>
+  <TalentTrade_tradeLock>Lock In</TalentTrade_tradeLock>
+  <TalentTrade_tradeWaitingLock>Waiting for other party...</TalentTrade_tradeWaitingLock>
+
+  <!-- Rental -->
+  <TalentTrade_rentalListTitle>Rental Listings</TalentTrade_rentalListTitle>
+  <TalentTrade_rentalMyListings>My Rentals</TalentTrade_rentalMyListings>
+  <TalentTrade_rentalMyRentals>Rented</TalentTrade_rentalMyRentals>
+  <TalentTrade_rentalPricePerDay>Daily Rate</TalentTrade_rentalPricePerDay>
+  <TalentTrade_rentalMaxDays>Max Days</TalentTrade_rentalMaxDays>
+  <TalentTrade_rentalDeposit>Deposit</TalentTrade_rentalDeposit>
+  <TalentTrade_rentalList>List for Rent</TalentTrade_rentalList>
+  <TalentTrade_rentalDelist>Delist</TalentTrade_rentalDelist>
+  <TalentTrade_rentalRent>Rent</TalentTrade_rentalRent>
+  <TalentTrade_rentalReturn>Return</TalentTrade_rentalReturn>
+  <TalentTrade_rentalDaysLeft>{0} days left</TalentTrade_rentalDaysLeft>
+  <TalentTrade_rentalOwner>Owner: {0}</TalentTrade_rentalOwner>
+  <TalentTrade_rentalPriceFormat>{0} silver/day</TalentTrade_rentalPriceFormat>
+  <TalentTrade_rentalDepositFormat>Deposit: {0} silver</TalentTrade_rentalDepositFormat>
+  <TalentTrade_rentalNoListings>No rental listings.</TalentTrade_rentalNoListings>
+  <TalentTrade_rentalPawnDied>Your colonist {0} died while rented out and has been revived and returned.</TalentTrade_rentalPawnDied>
+  <TalentTrade_rentalPawnDiedTitle>Rented Colonist Died</TalentTrade_rentalPawnDiedTitle>
+  <TalentTrade_rentalExpired>Rental for {0} has expired. Colonist returned automatically.</TalentTrade_rentalExpired>
+  <TalentTrade_rentalExpiredTitle>Rental Expired</TalentTrade_rentalExpiredTitle>
+
+  <!-- Pawn transfer -->
+  <TalentTrade_transferReport>About to send colonist "{0}" to {1}</TalentTrade_transferReport>
+  <TalentTrade_transferRaceOk>OK Race: {0} — installed on receiver</TalentTrade_transferRaceOk>
+  <TalentTrade_transferRaceFail>FAIL Race: {0} — not installed on receiver, cannot trade</TalentTrade_transferRaceFail>
+  <TalentTrade_transferEquipRemoved>REMOVED Equipment: {0} — not installed, will stay local</TalentTrade_transferEquipRemoved>
+  <TalentTrade_transferHediffRemoved>REMOVED Implant: {0} — not installed, will be removed</TalentTrade_transferHediffRemoved>
+  <TalentTrade_transferTraitOk>OK Trait: {0} — installed on receiver</TalentTrade_transferTraitOk>
+  <TalentTrade_transferTraitRemoved>REMOVED Trait: {0} — not installed, will be removed</TalentTrade_transferTraitRemoved>
+  <TalentTrade_transferConfirmSend>Confirm Send</TalentTrade_transferConfirmSend>
+
+  <!-- Notifications -->
+  <TalentTrade_pawnReceivedTitle>Colonist Received</TalentTrade_pawnReceivedTitle>
+  <TalentTrade_pawnReceivedMessage>You received colonist {0}.</TalentTrade_pawnReceivedMessage>
+</LanguageData>

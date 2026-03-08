@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ModMetaData>
+  <name>【CA】人才贸易-Talent trade</name>
+  <packageId>Natsuki.TalentTrade</packageId>
+  <author>Cagier.阳</author>
+  <description>
+Adds a talent trade tab to Phinix chat. Players can trade, sell, and rent pawns with each other.
+为 Phinix 聊天新增"人才贸易"标签页。玩家之间可以交易、出售和租借殖民者。
+  </description>
+  <supportedVersions>
+    <li>1.6</li>
+  </supportedVersions>
+  <modDependencies>
+    <li>
+      <packageId>Thomotron.Phinix</packageId>
+      <displayName>Phinix</displayName>
+    </li>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>Thomotron.Phinix</li>
+    <li>brrainz.harmony</li>
+    <li>Natsuki.PhinixRedPacket</li>
+  </loadAfter>
+</ModMetaData>
