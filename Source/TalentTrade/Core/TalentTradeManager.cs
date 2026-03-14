@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using PhinixClient;
+using RimWorld;
 using UnityEngine;
 using Verse;
 
@@ -18,6 +19,8 @@ namespace TalentTrade
         // --- Market state ---
         private static readonly object MarketLock = new object();
         private static readonly Dictionary<string, MarketListing> MarketListings = new Dictionary<string, MarketListing>();
+        // Local-only: serialized pawn data for listings we own (seller side)
+        private static readonly Dictionary<string, string> LocalPawnData = new Dictionary<string, string>();
 
         // --- Rental state ---
         private static readonly object RentalLock = new object();
@@ -36,12 +39,27 @@ namespace TalentTrade
         private static readonly Dictionary<string, TransferReport> PendingDefReports = new Dictionary<string, TransferReport>();
         private static readonly Dictionary<string, Action<TransferReport>> DefReportCallbacks = new Dictionary<string, Action<TransferReport>>();
 
+        // --- Offline listing cache ---
+        private static readonly Dictionary<string, MarketListing> OfflineListingCache = new Dictionary<string, MarketListing>();
+        private static readonly Dictionary<string, string> OfflinePawnDataCache = new Dictionary<string, string>();
+
+        // --- Purchase timeout tracking ---
+        private static readonly Dictionary<string, int> PendingPurchases = new Dictionary<string, int>();
+        private const int PURCHASE_TIMEOUT_TICKS = 600; // 10 seconds at 60 FPS
+
         public static void Initialize(Client client)
         {
             if (initialized || client == null) return;
 
             initialized = true;
-            client.OnDisconnect += (s, e) => Clear();
+            client.OnDisconnect += (s, e) =>
+            {
+                CacheMyListingsOnLogout();
+                Clear();
+            };
+
+            // Restore cached listings on login
+            RestoreMyListingsOnLogin();
         }
 
         public static void Update()
@@ -57,7 +75,13 @@ namespace TalentTrade
 
             TalentTradeTransport.Update();
             PollRelayBuffer();
-            RunMainThreadQueue();
+
+            // Only run game-dependent operations when a map is loaded
+            if (Current.ProgramState == ProgramState.Playing && Find.CurrentMap != null)
+            {
+                RunMainThreadQueue();
+                CheckPurchaseTimeouts();
+            }
         }
 
         public static void EnqueueMainThread(Action action)
@@ -121,6 +145,73 @@ namespace TalentTrade
                     result[i++] = kvp.Value;
                 }
                 return result;
+            }
+        }
+
+        // --- Market API ---
+
+        /// <summary>
+        /// Register a local market listing (seller side). Stores the held pawn and serialized data.
+        /// </summary>
+        public static void AddLocalMarketListing(string listingId, string sellerUuid, string sellerName, PawnSummary summary, int priceSilver, Pawn heldPawn, string b64PawnData)
+        {
+            MarketListing listing = new MarketListing
+            {
+                Id = listingId,
+                SellerUuid = sellerUuid,
+                SellerName = sellerName,
+                Summary = summary,
+                PriceSilver = priceSilver,
+                State = MarketListingState.Active,
+                CreatedAtUtc = DateTime.UtcNow,
+                HeldPawn = heldPawn
+            };
+
+            lock (MarketLock)
+            {
+                MarketListings[listingId] = listing;
+                LocalPawnData[listingId] = b64PawnData;
+            }
+        }
+
+        /// <summary>
+        /// Restore a delisted pawn back to the map (seller cancels listing).
+        /// </summary>
+        public static void RestoreDelistedPawn(string listingId)
+        {
+            string b64PawnData;
+            lock (MarketLock)
+            {
+                if (!LocalPawnData.TryGetValue(listingId, out b64PawnData))
+                {
+                    Log.Warning($"【三角洲贸易】RestoreDelistedPawn: No pawn data for listing {listingId}");
+                    return;
+                }
+                MarketListings.Remove(listingId);
+                LocalPawnData.Remove(listingId);
+            }
+
+            EnqueueMainThread(() =>
+            {
+                Pawn pawn = PawnDeserializer.DeserializeAndSpawn(b64PawnData);
+                if (pawn != null)
+                {
+                    Messages.Message("TalentTrade_pawnRestored".Translate(pawn.LabelShortCap), new LookTargets(pawn), MessageTypeDefOf.NeutralEvent, false);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Get the serialized pawn data for a local listing (seller side).
+        /// </summary>
+        public static string GetLocalPawnData(string listingId)
+        {
+            lock (MarketLock)
+            {
+                string data;
+                if (LocalPawnData.TryGetValue(listingId, out data))
+                    return data;
+                return null;
             }
         }
 
@@ -204,7 +295,7 @@ namespace TalentTrade
 
         private static void Clear()
         {
-            lock (MarketLock) { MarketListings.Clear(); }
+            lock (MarketLock) { MarketListings.Clear(); LocalPawnData.Clear(); }
             lock (RentalLock) { RentalContracts.Clear(); }
             lock (TradeLock) { ActiveTrades.Clear(); }
             lock (BlobLock) { PendingBlobs.Clear(); }
@@ -347,7 +438,7 @@ namespace TalentTrade
                 }
                 catch (Exception ex)
                 {
-                    Log.Error("[TalentTrade] MainThreadQueue action error: " + ex);
+                    Log.Error("【三角洲贸易】MainThreadQueue action error: " + ex);
                 }
             }
         }
@@ -397,25 +488,158 @@ namespace TalentTrade
         private static void HandleMarketBuy(string[] parts)
         {
             // PHXTT|v1|mbuy|listingId|buyerUuid|b64BuyerName
+            // Received by the SELLER — someone wants to buy our listing
+            Log.Message($"【三角洲贸易】HandleMarketBuy called, parts.Length={parts.Length}");
             if (parts.Length < 6) return;
-            // TODO: Phase 3 — seller responds with msell
+            string listingId = parts[3];
+            string buyerUuid = parts[4];
+            string buyerName = TalentTradeProtocol.DecodeField(parts[5]);
+            Log.Message($"【三角洲贸易】HandleMarketBuy: listingId={listingId}, buyerUuid={buyerUuid}");
+
+            string localUuid = GetLocalUuid();
+            Log.Message($"【三角洲贸易】HandleMarketBuy: localUuid={localUuid}");
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            // Check if we own this listing
+            MarketListing listing;
+            lock (MarketLock)
+            {
+                if (!MarketListings.TryGetValue(listingId, out listing))
+                {
+                    Log.Warning($"【三角洲贸易】HandleMarketBuy: Listing {listingId} not found");
+                    return;
+                }
+                if (listing.SellerUuid != localUuid)
+                {
+                    Log.Message($"【三角洲贸易】HandleMarketBuy: Not our listing (seller={listing.SellerUuid})");
+                    return;
+                }
+                if (listing.State != MarketListingState.Active)
+                {
+                    Log.Warning($"【三角洲贸易】HandleMarketBuy: Listing state is {listing.State}, not Active");
+                    return;
+                }
+            }
+
+            Log.Message($"【三角洲贸易】Completing sale directly");
+            CompleteSale(listingId, buyerUuid);
+        }
+
+        private static void CompleteSale(string listingId, string buyerUuid)
+        {
+            string localUuid = GetLocalUuid();
+            string b64PawnData;
+            MarketListing listing;
+
+            lock (MarketLock)
+            {
+                if (!MarketListings.TryGetValue(listingId, out listing)) return;
+                if (listing.SellerUuid != localUuid) return;
+                if (listing.State != MarketListingState.Active) return;
+
+                listing.State = MarketListingState.Sold;
+
+                if (!LocalPawnData.TryGetValue(listingId, out b64PawnData))
+                {
+                    b64PawnData = null;
+                }
+                LocalPawnData.Remove(listingId);
+            }
+
+            if (string.IsNullOrEmpty(b64PawnData))
+            {
+                Log.Error("【三角洲贸易】CompleteSale: No pawn data for listing " + listingId);
+                return;
+            }
+
+            string msg = TalentTradeProtocol.BuildMarketSell(listingId, localUuid, buyerUuid, b64PawnData);
+            SendProtocol(msg);
+
+            lock (MarketLock)
+            {
+                MarketListings.Remove(listingId);
+            }
         }
 
         private static void HandleMarketSell(string[] parts)
         {
             // PHXTT|v1|msell|listingId|sellerUuid|buyerUuid|b64CompressedPawnData
+            // Received by the BUYER — seller is sending us the pawn
             if (parts.Length < 7) return;
-            // TODO: Phase 3 — buyer receives pawn data
+            string listingId = parts[3];
+            string buyerUuid = parts[5];
+            string b64PawnData = parts[6];
+
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+            if (buyerUuid != localUuid) return;
+
+            // Remove from pending purchases
+            PendingPurchases.Remove(listingId);
+
+            // Remove listing from local view
+            lock (MarketLock)
+            {
+                MarketListings.Remove(listingId);
+            }
+
+            // Deserialize and spawn pawn on main thread
+            EnqueueMainThread(() =>
+            {
+                Pawn pawn = PawnDeserializer.DeserializeAndSpawn(b64PawnData);
+                if (pawn != null)
+                {
+                    Messages.Message(
+                        "TalentTrade_pawnReceivedMessage".Translate(pawn.LabelShortCap),
+                        new LookTargets(pawn),
+                        MessageTypeDefOf.PositiveEvent,
+                        false);
+                }
+                else
+                {
+                    Log.Error("【三角洲贸易】HandleMarketSell: Failed to deserialize pawn for listing " + listingId);
+                }
+            });
         }
 
         private static void HandleMarketPaid(string[] parts)
         {
-            // TODO: Phase 3
+            // PHXTT|v1|mpaid|listingId|buyerUuid|b64CompressedSilverItems
+            // Future: handle silver transfer confirmation. For now, market is trust-based.
+            if (parts.Length < 6) return;
         }
 
         private static void HandleMarketSync(string[] parts)
         {
-            // TODO: Phase 3 — respond with current listings
+            // PHXTT|v1|msync|requestorUuid
+            // Re-broadcast all our active listings so the requestor can see them
+            if (parts.Length < 4) return;
+
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+            string localName = GetLocalDisplayName();
+
+            MarketListing[] snapshot;
+            lock (MarketLock)
+            {
+                snapshot = new MarketListing[MarketListings.Count];
+                int idx = 0;
+                foreach (var kvp in MarketListings)
+                {
+                    snapshot[idx++] = kvp.Value;
+                }
+            }
+
+            for (int i = 0; i < snapshot.Length; i++)
+            {
+                MarketListing l = snapshot[i];
+                if (l.SellerUuid != localUuid) continue;
+                if (l.State != MarketListingState.Active) continue;
+                if (l.Summary == null) continue;
+
+                string msg = TalentTradeProtocol.BuildMarketList(l.Id, localUuid, l.Summary.ToBase64(), l.PriceSilver, localName);
+                SendProtocol(msg);
+            }
         }
 
         private static void HandleTradeRequest(string[] parts)
@@ -500,32 +724,211 @@ namespace TalentTrade
 
         private static void HandleRentalRent(string[] parts)
         {
-            // TODO: Phase 5
+            // PHXTT|v1|rrent|rentalId|renterUuid|days|b64RenterName
+            // Received by OWNER — someone wants to rent our pawn
+            if (parts.Length < 7) return;
+            string rentalId = parts[3];
+            string renterUuid = parts[4];
+            int days;
+            if (!int.TryParse(parts[5], out days)) return;
+            string renterName = TalentTradeProtocol.DecodeField(parts[6]);
+
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            RentalContract contract;
+            string cachedXml;
+            lock (RentalLock)
+            {
+                if (!RentalContracts.TryGetValue(rentalId, out contract)) return;
+                if (contract.OwnerUuid != localUuid) return;
+                if (contract.State != RentalContractState.Listed) return;
+
+                // Cache original pawn XML before sending
+                cachedXml = contract.OriginalPawnData;
+            }
+
+            if (string.IsNullOrEmpty(cachedXml))
+            {
+                Log.Error("【三角洲贸易】HandleRentalRent: No cached pawn data for rental " + rentalId);
+                return;
+            }
+
+            // Update contract state
+            lock (RentalLock)
+            {
+                contract.State = RentalContractState.Active;
+                contract.RenterUuid = renterUuid;
+                contract.RenterName = renterName;
+                contract.RentedDays = days;
+                contract.StartTick = Find.TickManager.TicksGame;
+                contract.ExpiryTick = contract.StartTick + days * 60000;
+            }
+
+            // Send cached pawn data to renter
+            string msg = TalentTradeProtocol.BuildRentalConfirm(rentalId, localUuid, renterUuid, cachedXml);
+            SendProtocol(msg);
         }
 
         private static void HandleRentalConfirm(string[] parts)
         {
-            // TODO: Phase 5
+            // PHXTT|v1|rconf|rentalId|ownerUuid|renterUuid|b64CompressedPawnData
+            // Received by RENTER — owner is sending us the pawn
+            if (parts.Length < 7) return;
+            string rentalId = parts[3];
+            string renterUuid = parts[5];
+            string b64PawnData = parts[6];
+
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+            if (renterUuid != localUuid) return;
+
+            // Spawn pawn
+            EnqueueMainThread(() =>
+            {
+                Pawn pawn = PawnDeserializer.DeserializeAndSpawn(b64PawnData);
+                if (pawn != null)
+                {
+                    Messages.Message(
+                        "TalentTrade_pawnReceivedMessage".Translate(pawn.LabelShortCap),
+                        new LookTargets(pawn),
+                        MessageTypeDefOf.PositiveEvent,
+                        false);
+                }
+            });
         }
 
         private static void HandleRentalReturn(string[] parts)
         {
-            // TODO: Phase 5
+            // PHXTT|v1|rret|rentalId|renterUuid|b64CompressedPawnData
+            // Received by OWNER — renter is returning the pawn (IGNORE their data, use cache)
+            if (parts.Length < 6) return;
+            string rentalId = parts[3];
+            string renterUuid = parts[4];
+
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            RentalContract contract;
+            string cachedXml;
+            lock (RentalLock)
+            {
+                if (!RentalContracts.TryGetValue(rentalId, out contract)) return;
+                if (contract.OwnerUuid != localUuid) return;
+                if (contract.RenterUuid != renterUuid) return;
+
+                cachedXml = contract.OriginalPawnData;
+                contract.State = RentalContractState.Returned;
+                RentalContracts.Remove(rentalId);
+            }
+
+            // Restore from cache (ignore renter's data)
+            if (!string.IsNullOrEmpty(cachedXml))
+            {
+                EnqueueMainThread(() =>
+                {
+                    Pawn pawn = PawnDeserializer.DeserializeAndSpawn(cachedXml);
+                    if (pawn != null)
+                    {
+                        Messages.Message(
+                            "TalentTrade_pawnReceivedMessage".Translate(pawn.LabelShortCap),
+                            new LookTargets(pawn),
+                            MessageTypeDefOf.PositiveEvent,
+                            false);
+                    }
+                });
+            }
         }
 
         private static void HandleRentalExpiry(string[] parts)
         {
-            // TODO: Phase 5
+            // PHXTT|v1|rexp|rentalId
+            // Broadcast: rental expired, auto-return
+            if (parts.Length < 4) return;
+            string rentalId = parts[3];
+
+            lock (RentalLock)
+            {
+                RentalContracts.Remove(rentalId);
+            }
         }
 
         private static void HandleRentalDead(string[] parts)
         {
-            // TODO: Phase 5
+            // PHXTT|v1|rdead|rentalId|renterUuid
+            // Received by OWNER — renter reports pawn died, we revive from cache
+            if (parts.Length < 5) return;
+            string rentalId = parts[3];
+            string renterUuid = parts[4];
+
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            RentalContract contract;
+            string cachedXml;
+            lock (RentalLock)
+            {
+                if (!RentalContracts.TryGetValue(rentalId, out contract)) return;
+                if (contract.OwnerUuid != localUuid) return;
+                if (contract.RenterUuid != renterUuid) return;
+
+                cachedXml = contract.OriginalPawnData;
+                contract.State = RentalContractState.PawnLost;
+            }
+
+            // Revive from cache using ResurrectionUtility
+            if (!string.IsNullOrEmpty(cachedXml))
+            {
+                EnqueueMainThread(() =>
+                {
+                    Pawn pawn = PawnDeserializer.Deserialize(cachedXml);
+                    if (pawn != null)
+                    {
+                        // Resurrect the pawn
+                        ResurrectionUtility.TryResurrect(pawn, new ResurrectionParams());
+                        PawnDeserializer.SpawnViaDropPod(pawn);
+
+                        // Send revived pawn back to renter
+                        string revivedXml = PawnSerializer.Serialize(pawn);
+                        if (!string.IsNullOrEmpty(revivedXml))
+                        {
+                            string msg = TalentTradeProtocol.BuildRentalRevive(rentalId, localUuid, revivedXml);
+                            SendProtocol(msg);
+                        }
+                    }
+                });
+            }
         }
 
         private static void HandleRentalRevive(string[] parts)
         {
-            // TODO: Phase 5
+            // PHXTT|v1|rrev|rentalId|ownerUuid|b64CompressedPawnData
+            // Received by RENTER — owner revived and returned the pawn
+            if (parts.Length < 6) return;
+            string rentalId = parts[3];
+            string b64PawnData = parts[5];
+
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            // Spawn revived pawn
+            EnqueueMainThread(() =>
+            {
+                Pawn pawn = PawnDeserializer.DeserializeAndSpawn(b64PawnData);
+                if (pawn != null)
+                {
+                    Messages.Message(
+                        "TalentTrade_rentalPawnDied".Translate(pawn.LabelShortCap),
+                        new LookTargets(pawn),
+                        MessageTypeDefOf.NeutralEvent,
+                        false);
+                }
+            });
+
+            lock (RentalLock)
+            {
+                RentalContracts.Remove(rentalId);
+            }
         }
 
         private static void HandleDefManifest(string[] parts)
@@ -656,6 +1059,102 @@ namespace TalentTrade
                     string assembled = sb.ToString();
                     ProcessProtocolMessage(assembled);
                 }
+            }
+        }
+
+        // --- Offline handling ---
+
+        public static void TrackPurchase(string listingId)
+        {
+            PendingPurchases[listingId] = Find.TickManager.TicksGame;
+        }
+
+        private static void CheckPurchaseTimeouts()
+        {
+            if (PendingPurchases.Count == 0) return;
+
+            int currentTick = Find.TickManager.TicksGame;
+            List<string> timedOut = new List<string>();
+
+            foreach (var kvp in PendingPurchases)
+            {
+                if (currentTick - kvp.Value > PURCHASE_TIMEOUT_TICKS)
+                {
+                    timedOut.Add(kvp.Key);
+                }
+            }
+
+            foreach (string listingId in timedOut)
+            {
+                PendingPurchases.Remove(listingId);
+                lock (MarketLock)
+                {
+                    MarketListings.Remove(listingId);
+                }
+                Log.Warning($"【三角洲贸易】Purchase timeout for listing {listingId}, seller offline");
+                Messages.Message("TalentTrade_sellerOffline".Translate(), MessageTypeDefOf.RejectInput, false);
+            }
+        }
+
+        public static void RestoreMyListingsOnLogin()
+        {
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            lock (MarketLock)
+            {
+                foreach (var kvp in OfflineListingCache)
+                {
+                    MarketListings[kvp.Key] = kvp.Value;
+                }
+                foreach (var kvp in OfflinePawnDataCache)
+                {
+                    LocalPawnData[kvp.Key] = kvp.Value;
+                }
+            }
+
+            if (OfflineListingCache.Count > 0)
+            {
+                Log.Message($"【三角洲贸易】Restored {OfflineListingCache.Count} cached listings");
+                string localName = GetLocalDisplayName();
+                foreach (var kvp in OfflineListingCache)
+                {
+                    MarketListing l = kvp.Value;
+                    if (l.Summary != null)
+                    {
+                        string msg = TalentTradeProtocol.BuildMarketList(l.Id, localUuid, l.Summary.ToBase64(), l.PriceSilver, localName);
+                        SendProtocol(msg);
+                    }
+                }
+            }
+        }
+
+        public static void CacheMyListingsOnLogout()
+        {
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            OfflineListingCache.Clear();
+            OfflinePawnDataCache.Clear();
+
+            lock (MarketLock)
+            {
+                foreach (var kvp in MarketListings)
+                {
+                    if (kvp.Value.SellerUuid == localUuid)
+                    {
+                        OfflineListingCache[kvp.Key] = kvp.Value;
+                    }
+                }
+                foreach (var kvp in LocalPawnData)
+                {
+                    OfflinePawnDataCache[kvp.Key] = kvp.Value;
+                }
+            }
+
+            if (OfflineListingCache.Count > 0)
+            {
+                Log.Message($"【三角洲贸易】Cached {OfflineListingCache.Count} listings for next login");
             }
         }
     }

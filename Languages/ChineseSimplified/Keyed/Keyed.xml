@@ -37,6 +37,9 @@
   <TalentTrade_marketPriceFormat>{0} 银</TalentTrade_marketPriceFormat>
   <TalentTrade_marketNoListings>暂无挂牌。</TalentTrade_marketNoListings>
   <TalentTrade_marketBuyConfirm>确认购买 {0}？价格: {1} 银</TalentTrade_marketBuyConfirm>
+  <TalentTrade_cannotBuyNoRace>无法购买 {0}：你缺少种族 mod "{1}"</TalentTrade_cannotBuyNoRace>
+  <TalentTrade_raceIncompatible>无法出售 {0}：买家缺少种族 mod "{1}"</TalentTrade_raceIncompatible>
+  <TalentTrade_sellerOffline>卖家已离线，交易取消。</TalentTrade_sellerOffline>
 
   <!-- Direct Trade -->
   <TalentTrade_tradeWith>交易</TalentTrade_tradeWith>
@@ -88,4 +91,5 @@
   <!-- Notifications -->
   <TalentTrade_pawnReceivedTitle>收到殖民者</TalentTrade_pawnReceivedTitle>
   <TalentTrade_pawnReceivedMessage>你收到了殖民者 {0}。</TalentTrade_pawnReceivedMessage>
+  <TalentTrade_pawnRestored>殖民者 {0} 已下架归还。</TalentTrade_pawnRestored>
 </LanguageData>

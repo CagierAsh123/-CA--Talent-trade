@@ -21,6 +21,7 @@ namespace TalentTrade
         }
 
         private SubTab activeSubTab = SubTab.Market;
+        private readonly MarketPanel marketPanel = new MarketPanel();
 
         public void Draw(Rect inRect)
         {
@@ -94,9 +95,7 @@ namespace TalentTrade
 
         private void DrawMarketPanel(Rect rect)
         {
-            // TODO: Phase 3 — MarketPanel
-            Widgets.DrawMenuSection(rect);
-            Widgets.NoneLabelCenteredVertically(rect, "TalentTrade_comingSoon".Translate());
+            marketPanel.Draw(rect);
         }
 
         private void DrawRentalPanel(Rect rect)

@@ -22,7 +22,7 @@ namespace TalentTrade
             if (pawn == null) return null;
             if (Scribe.mode != LoadSaveMode.Inactive)
             {
-                Log.Warning("[TalentTrade] PawnToXml called while Scribe is busy (mode=" + Scribe.mode + "). Aborting.");
+                Log.Warning("【三角洲贸易】PawnToXml called while Scribe is busy (mode=" + Scribe.mode + "). Aborting.");
                 return null;
             }
 
@@ -31,14 +31,14 @@ namespace TalentTrade
                 string xml = Scribe.saver.DebugOutputFor(pawn);
                 if (string.IsNullOrEmpty(xml))
                 {
-                    Log.Error("[TalentTrade] PawnToXml: DebugOutputFor returned empty for " + pawn.LabelShort);
+                    Log.Error("【三角洲贸易】PawnToXml: DebugOutputFor returned empty for " + pawn.LabelShort);
                     return null;
                 }
                 return xml;
             }
             catch (Exception ex)
             {
-                Log.Error("[TalentTrade] PawnToXml failed: " + ex);
+                Log.Error("【三角洲贸易】PawnToXml failed: " + ex);
                 return null;
             }
         }
@@ -58,7 +58,7 @@ namespace TalentTrade
             }
             catch (Exception ex)
             {
-                Log.Error("[TalentTrade] PawnSerializer.Serialize compress failed: " + ex);
+                Log.Error("【三角洲贸易】PawnSerializer.Serialize compress failed: " + ex);
                 return null;
             }
         }
@@ -88,7 +88,7 @@ namespace TalentTrade
             }
             catch (Exception ex)
             {
-                Log.Error("[TalentTrade] DespawnAndHold failed: " + ex);
+                Log.Error("【三角洲贸易】DespawnAndHold failed: " + ex);
                 return false;
             }
         }

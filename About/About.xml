@@ -14,10 +14,12 @@ Adds a talent trade tab to Phinix chat. Players can trade, sell, and rent pawns 
     <li>
       <packageId>Thomotron.Phinix</packageId>
       <displayName>Phinix</displayName>
+      <steamWorkshopUrl>https://steamcommunity.com/sharedfiles/filedetails/?id=2551652757</steamWorkshopUrl>
     </li>
     <li>
       <packageId>brrainz.harmony</packageId>
       <displayName>Harmony</displayName>
+      <steamWorkshopUrl>https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077</steamWorkshopUrl>
     </li>
   </modDependencies>
   <loadAfter>

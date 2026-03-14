@@ -7,7 +7,8 @@
       "Bash(find:*)",
       "Bash(mkdir:*)",
       "Bash(dotnet build:*)",
-      "Bash(read f:*)"
+      "Bash(read f:*)",
+      "Bash(ls:*)"
     ]
   }
 }

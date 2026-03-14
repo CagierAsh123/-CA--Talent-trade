@@ -27,11 +27,23 @@ namespace TalentTrade
             }
             catch (Exception ex)
             {
-                Log.Error("[TalentTrade] PawnDeserializer.Deserialize decompress failed: " + ex);
+                Log.Error("【三角洲贸易】PawnDeserializer.Deserialize decompress failed: " + ex);
                 return null;
             }
 
-            return XmlToPawn(xml);
+            Pawn pawn = XmlToPawn(xml);
+            if (pawn != null)
+            {
+                // Critical check: reject pawn if def is null (missing race mod)
+                if (pawn.def == null)
+                {
+                    Log.Error("【三角洲贸易】Pawn deserialization failed: pawn.def is null (missing race mod). Rejecting pawn.");
+                    return null;
+                }
+                PostProcessPawn(pawn);
+                Log.Message("【三角洲贸易】Pawn 反序列化成功。注意：上方任何 hediff/need 警告是 Scribe 时序导致的预期行为，不影响功能。| Pawn deserialized successfully. Any hediff/need warnings above are expected due to Scribe timing and do not affect functionality.");
+            }
+            return pawn;
         }
 
         /// <summary>
@@ -42,7 +54,7 @@ namespace TalentTrade
             if (string.IsNullOrEmpty(xml)) return null;
             if (Scribe.mode != LoadSaveMode.Inactive)
             {
-                Log.Warning("[TalentTrade] XmlToPawn called while Scribe is busy (mode=" + Scribe.mode + "). Aborting.");
+                Log.Warning("【三角洲贸易】XmlToPawn called while Scribe is busy (mode=" + Scribe.mode + "). Aborting.");
                 return null;
             }
 
@@ -70,15 +82,31 @@ namespace TalentTrade
 
                 pawn = ScribeExtractor.SaveableFromNode<Pawn>(pawnNode, new object[0]);
 
-                // Resolve cross-references
-                Scribe.loader.crossRefs.ResolveAllCrossReferences();
+                // Critical check BEFORE cross-ref resolution
+                if (pawn != null && pawn.def == null)
+                {
+                    Log.Error("【三角洲贸易】Pawn.def is null after SaveableFromNode, aborting");
+                    pawn = null;
+                }
 
-                // Run post-load init
-                Scribe.loader.initer.DoAllPostLoadInits();
+                if (pawn != null)
+                {
+                    // Resolve cross-references
+                    Scribe.loader.crossRefs.ResolveAllCrossReferences();
+
+                    // Clean up null hediffs BEFORE post-load init
+                    if (pawn.health != null && pawn.health.hediffSet != null)
+                    {
+                        pawn.health.hediffSet.hediffs.RemoveAll(h => h == null || h.def == null);
+                    }
+
+                    // Run post-load init
+                    Scribe.loader.initer.DoAllPostLoadInits();
+                }
             }
             catch (Exception ex)
             {
-                Log.Error("[TalentTrade] XmlToPawn failed: " + ex);
+                Log.Error("【三角洲贸易】XmlToPawn failed: " + ex);
                 pawn = null;
             }
             finally
@@ -89,6 +117,142 @@ namespace TalentTrade
             }
 
             return pawn;
+        }
+
+        /// <summary>
+        /// Post-process a deserialized pawn to fix cross-save incompatibilities.
+        /// </summary>
+        private static void PostProcessPawn(Pawn pawn)
+        {
+            if (pawn == null) return;
+
+            // Regenerate Thing IDs to avoid conflicts
+            pawn.SetForbidden(false, false);
+            pawn.thingIDNumber = -1;
+            pawn.thingIDNumber = Find.UniqueIDsManager.GetNextThingID();
+
+            // Regenerate IDs for apparel
+            if (pawn.apparel != null && pawn.apparel.WornApparel != null)
+            {
+                foreach (var ap in pawn.apparel.WornApparel)
+                {
+                    if (ap != null)
+                    {
+                        ap.thingIDNumber = -1;
+                        ap.thingIDNumber = Find.UniqueIDsManager.GetNextThingID();
+                    }
+                }
+            }
+
+            // Regenerate IDs for equipment
+            if (pawn.equipment != null && pawn.equipment.AllEquipmentListForReading != null)
+            {
+                foreach (var eq in pawn.equipment.AllEquipmentListForReading)
+                {
+                    if (eq != null)
+                    {
+                        eq.thingIDNumber = -1;
+                        eq.thingIDNumber = Find.UniqueIDsManager.GetNextThingID();
+                    }
+                }
+            }
+
+            // Regenerate IDs for inventory
+            if (pawn.inventory != null && pawn.inventory.innerContainer != null)
+            {
+                foreach (var item in pawn.inventory.innerContainer)
+                {
+                    if (item != null)
+                    {
+                        item.thingIDNumber = -1;
+                        item.thingIDNumber = Find.UniqueIDsManager.GetNextThingID();
+                    }
+                }
+            }
+
+            // Clean up null hediffs
+            if (pawn.health != null && pawn.health.hediffSet != null)
+            {
+                pawn.health.hediffSet.hediffs.RemoveAll(h => h == null || h.def == null);
+
+                // Regenerate hediff loadIDs
+                foreach (var hediff in pawn.health.hediffSet.hediffs)
+                {
+                    if (hediff != null)
+                    {
+                        hediff.loadID = Find.UniqueIDsManager.GetNextHediffID();
+                    }
+                }
+            }
+
+            // Regenerate Gene loadIDs
+            if (pawn.genes != null)
+            {
+                if (pawn.genes.Endogenes != null)
+                {
+                    foreach (var gene in pawn.genes.Endogenes)
+                    {
+                        if (gene != null)
+                        {
+                            gene.loadID = Find.UniqueIDsManager.GetNextGeneID();
+                        }
+                    }
+                }
+                if (pawn.genes.Xenogenes != null)
+                {
+                    foreach (var gene in pawn.genes.Xenogenes)
+                    {
+                        if (gene != null)
+                        {
+                            gene.loadID = Find.UniqueIDsManager.GetNextGeneID();
+                        }
+                    }
+                }
+            }
+
+            // Fix Ideo
+            if (ModsConfig.IdeologyActive && pawn.ideo != null)
+            {
+                Ideo receiverIdeo = Faction.OfPlayer?.ideos?.PrimaryIdeo;
+                if (receiverIdeo != null)
+                {
+                    pawn.ideo.SetIdeo(receiverIdeo);
+                }
+            }
+
+            // Clear invalid Thing references
+            if (pawn.mindState != null)
+            {
+                pawn.mindState.lastAttackedTarget = LocalTargetInfo.Invalid;
+                pawn.mindState.enemyTarget = null;
+                pawn.mindState.meleeThreat = null;
+            }
+
+            // Reset jobs to avoid stale references
+            if (pawn.jobs != null)
+            {
+                pawn.jobs.ClearQueuedJobs();
+                if (pawn.jobs.curJob != null)
+                {
+                    pawn.jobs.EndCurrentJob(Verse.AI.JobCondition.InterruptForced, false);
+                }
+            }
+
+            // Reset stances
+            if (pawn.stances != null)
+            {
+                pawn.stances.SetStance(new Stance_Mobile());
+            }
+
+            // Reset verb tracker to rebuild from current equipment
+            if (pawn.verbTracker != null)
+            {
+                pawn.verbTracker = new VerbTracker(pawn);
+            }
+            if (pawn.meleeVerbs != null)
+            {
+                pawn.meleeVerbs.Notify_PawnDespawned();
+            }
         }
 
         /// <summary>
@@ -106,7 +270,7 @@ namespace TalentTrade
                 }
                 if (map == null)
                 {
-                    Log.Error("[TalentTrade] SpawnViaDropPod: No map available.");
+                    Log.Error("【三角洲贸易】SpawnViaDropPod: No map available.");
                     return false;
                 }
 
@@ -119,11 +283,16 @@ namespace TalentTrade
                 }
 
                 TradeUtility.SpawnDropPod(dropSpot, map, pawn);
+
+                // Force refresh pawn graphics cache
+                pawn.Drawer.renderer.SetAllGraphicsDirty();
+                PortraitsCache.SetDirty(pawn);
+
                 return true;
             }
             catch (Exception ex)
             {
-                Log.Error("[TalentTrade] SpawnViaDropPod failed: " + ex);
+                Log.Error("【三角洲贸易】SpawnViaDropPod failed: " + ex);
                 return false;
             }
         }
