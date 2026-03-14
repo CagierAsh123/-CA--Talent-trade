@@ -172,6 +172,12 @@ namespace TalentTrade
                 MarketListings[listingId] = listing;
                 LocalPawnData[listingId] = b64PawnData;
             }
+
+            // Track this listing as belonging to the current save
+            if (TalentTradeGameComponent.Current != null)
+            {
+                TalentTradeGameComponent.Current.TrackListing(listingId);
+            }
         }
 
         /// <summary>
@@ -189,6 +195,12 @@ namespace TalentTrade
                 }
                 MarketListings.Remove(listingId);
                 LocalPawnData.Remove(listingId);
+            }
+
+            // Untrack from current save
+            if (TalentTradeGameComponent.Current != null)
+            {
+                TalentTradeGameComponent.Current.UntrackListing(listingId);
             }
 
             EnqueueMainThread(() =>
@@ -212,6 +224,19 @@ namespace TalentTrade
                 if (LocalPawnData.TryGetValue(listingId, out data))
                     return data;
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Remove a listing and its pawn data from local state (used by GameComponent on save exit).
+        /// Does NOT broadcast delist — caller handles that.
+        /// </summary>
+        public static void RemoveListingLocally(string listingId)
+        {
+            lock (MarketLock)
+            {
+                MarketListings.Remove(listingId);
+                LocalPawnData.Remove(listingId);
             }
         }
 
@@ -554,6 +579,12 @@ namespace TalentTrade
 
             string msg = TalentTradeProtocol.BuildMarketSell(listingId, localUuid, buyerUuid, b64PawnData);
             SendProtocol(msg);
+
+            // Untrack from current save
+            if (TalentTradeGameComponent.Current != null)
+            {
+                TalentTradeGameComponent.Current.UntrackListing(listingId);
+            }
 
             lock (MarketLock)
             {

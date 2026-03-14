@@ -92,4 +92,8 @@
   <TalentTrade_pawnReceivedTitle>收到殖民者</TalentTrade_pawnReceivedTitle>
   <TalentTrade_pawnReceivedMessage>你收到了殖民者 {0}。</TalentTrade_pawnReceivedMessage>
   <TalentTrade_pawnRestored>殖民者 {0} 已下架归还。</TalentTrade_pawnRestored>
+  <TalentTrade_cannotDelistWrongSave>无法下架：该挂牌属于另一个存档。</TalentTrade_cannotDelistWrongSave>
+  <TalentTrade_forceCleanup>强制清理</TalentTrade_forceCleanup>
+  <TalentTrade_noListingsToClean>没有需要清理的挂牌。</TalentTrade_noListingsToClean>
+  <TalentTrade_cleanupDone>已清理 {0} 条挂牌。殖民者已送往亚空间。</TalentTrade_cleanupDone>
 </LanguageData>

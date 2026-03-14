@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Xml;
 using RimWorld;
 using RimWorld.Planet;
+using UnityEngine;
 using Verse;
 
 namespace TalentTrade
@@ -73,15 +76,12 @@ namespace TalentTrade
 
             try
             {
+                // Remove pawn from texture atlas BEFORE despawn to prevent GC KeyNotFoundException
+                RemoveFromTextureAtlas(pawn);
+
                 if (pawn.Spawned)
                 {
                     pawn.DeSpawn(DestroyMode.Vanish);
-                }
-
-                // Prevent garbage collection by registering with WorldPawns
-                if (!pawn.Destroyed && Find.WorldPawns != null)
-                {
-                    Find.WorldPawns.PassToWorld(pawn, PawnDiscardDecideMode.KeepForever);
                 }
 
                 return true;
@@ -90,6 +90,50 @@ namespace TalentTrade
             {
                 Log.Error("【三角洲贸易】DespawnAndHold failed: " + ex);
                 return false;
+            }
+        }
+
+        private static FieldInfo pawnAtlasesField;
+        private static FieldInfo frameAssignmentsField;
+        private static FieldInfo freeFrameSetsField;
+
+        private static void RemoveFromTextureAtlas(Pawn pawn)
+        {
+            try
+            {
+                if (pawnAtlasesField == null)
+                    pawnAtlasesField = typeof(GlobalTextureAtlasManager).GetField("pawnTextureAtlases", BindingFlags.Static | BindingFlags.NonPublic);
+                if (frameAssignmentsField == null)
+                    frameAssignmentsField = typeof(PawnTextureAtlas).GetField("frameAssignments", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (freeFrameSetsField == null)
+                    freeFrameSetsField = typeof(PawnTextureAtlas).GetField("freeFrameSets", BindingFlags.Instance | BindingFlags.NonPublic);
+
+                if (pawnAtlasesField == null || frameAssignmentsField == null || freeFrameSetsField == null) return;
+
+                var atlases = (List<PawnTextureAtlas>)pawnAtlasesField.GetValue(null);
+                if (atlases == null) return;
+
+                foreach (var atlas in atlases)
+                {
+                    var assignments = (Dictionary<Pawn, PawnTextureAtlasFrameSet>)frameAssignmentsField.GetValue(atlas);
+                    if (assignments == null) continue;
+
+                    PawnTextureAtlasFrameSet frameSet;
+                    if (assignments.TryGetValue(pawn, out frameSet))
+                    {
+                        assignments.Remove(pawn);
+                        var freeSets = (List<PawnTextureAtlasFrameSet>)freeFrameSetsField.GetValue(atlas);
+                        if (freeSets != null)
+                        {
+                            freeSets.Add(frameSet);
+                        }
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("【三角洲贸易】RemoveFromTextureAtlas failed (non-fatal): " + ex);
             }
         }
     }

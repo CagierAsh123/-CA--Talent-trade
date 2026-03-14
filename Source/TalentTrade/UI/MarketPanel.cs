@@ -73,6 +73,13 @@ namespace TalentTrade
             // Refresh
             if (!sellMode)
             {
+                // Force cleanup button (left of refresh)
+                Rect cleanupRect = new Rect(rect.xMax - 80f - 20f - 80f - SPACING, rect.y, 80f, rect.height);
+                if (Widgets.ButtonText(cleanupRect, "TalentTrade_forceCleanup".Translate()))
+                {
+                    ForceCleanupAllMyListings();
+                }
+
                 Rect refreshRect = new Rect(rect.xMax - 80f - 20f, rect.y, 80f, rect.height);
                 if (Widgets.ButtonText(refreshRect, "TalentTrade_refresh".Translate()))
                 {
@@ -263,7 +270,7 @@ namespace TalentTrade
             List<Pawn> colonists = new List<Pawn>();
             if (Find.CurrentMap != null)
             {
-                foreach (Pawn p in Find.CurrentMap.mapPawns.FreeColonists)
+                foreach (Pawn p in Find.CurrentMap.mapPawns.FreeColonistsSpawned)
                 {
                     colonists.Add(p);
                 }
@@ -291,6 +298,15 @@ namespace TalentTrade
         private void DoListForSale()
         {
             if (selectedPawn == null || priceValue <= 0) return;
+
+            // Prevent listing a pawn that is not on the map
+            // (e.g. inside a drop pod, despawned, dead)
+            if (!selectedPawn.Spawned || selectedPawn.Dead)
+            {
+                Messages.Message("TalentTrade_noPawnsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
+                selectedPawn = null;
+                return;
+            }
 
             string localUuid = TalentTradeManager.GetLocalUuid();
             if (string.IsNullOrEmpty(localUuid)) return;
@@ -375,6 +391,13 @@ namespace TalentTrade
             string localUuid = TalentTradeManager.GetLocalUuid();
             if (string.IsNullOrEmpty(localUuid)) return;
 
+            // Prevent cross-save delist — only allow if this save owns the listing
+            if (TalentTradeGameComponent.Current != null && !TalentTradeGameComponent.Current.OwnsListing(listing.Id))
+            {
+                Messages.Message("TalentTrade_cannotDelistWrongSave".Translate(), MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
             // Restore held pawn
             TalentTradeManager.RestoreDelistedPawn(listing.Id);
 
@@ -387,6 +410,45 @@ namespace TalentTrade
             selectedPawn = null;
             priceBuffer = "100";
             priceValue = 100;
+        }
+
+        private void ForceCleanupAllMyListings()
+        {
+            string localUuid = TalentTradeManager.GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            MarketListing[] all = TalentTradeManager.GetMarketListingsSnapshot();
+            List<string> toRemove = new List<string>();
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i] != null && all[i].SellerUuid == localUuid && all[i].State == MarketListingState.Active)
+                {
+                    toRemove.Add(all[i].Id);
+                }
+            }
+
+            if (toRemove.Count == 0)
+            {
+                Messages.Message("TalentTrade_noListingsToClean".Translate(), MessageTypeDefOf.NeutralEvent, false);
+                return;
+            }
+
+            foreach (string id in toRemove)
+            {
+                // Broadcast delist
+                string msg = TalentTradeProtocol.BuildMarketDelist(id, localUuid);
+                TalentTradeManager.SendProtocol(msg);
+
+                // Remove locally (pawn data is gone — sent to the warp)
+                TalentTradeManager.RemoveListingLocally(id);
+
+                if (TalentTradeGameComponent.Current != null)
+                {
+                    TalentTradeGameComponent.Current.UntrackListing(id);
+                }
+            }
+
+            Messages.Message("TalentTrade_cleanupDone".Translate(toRemove.Count.ToString()), MessageTypeDefOf.NeutralEvent, false);
         }
     }
 }

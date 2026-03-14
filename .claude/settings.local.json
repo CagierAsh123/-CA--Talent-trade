@@ -8,7 +8,9 @@
       "Bash(mkdir:*)",
       "Bash(dotnet build:*)",
       "Bash(read f:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(cd \"B:\\\\rimworld-code\\\\_SourceCode\\\\Develop\\\\【CA】人才贸易-Talent trade\" && file Languages/ChineseSimplified/Keyed/Keyed.xml && xxd Languages/ChineseSimplified/Keyed/Keyed.xml | head -5)",
+      "Bash(cd \"B:\\\\rimworld-code\\\\_SourceCode\\\\Develop\\\\【CA】人才贸易-Talent trade\" && xxd Languages/ChineseSimplified/Keyed/Keyed.xml | tail -20)"
     ]
   }
 }
