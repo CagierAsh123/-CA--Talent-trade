@@ -10,8 +10,8 @@ namespace TalentTrade
 {
     internal static class TalentTradeTransport
     {
-        private const string RelayBaseUrl = "http://39.96.216.77/rp";
-        private const string RelayApiKey = "ce699fa04e44eca445a9ea809ee765c88b87f8d2665f4d14c3f7c180afab467f";
+        private const string RelayBaseUrl = "http://114.55.115.143:8080";
+        private const string RelayApiKey = "";
         private const string RelayRoom = "talent-trade";
 
         private static readonly object OutgoingLock = new object();
@@ -185,7 +185,8 @@ namespace TalentTrade
                 request.Proxy = null;
                 request.ContentType = "text/plain; charset=utf-8";
                 request.ContentLength = bodyBytes.Length;
-                request.Headers["X-Api-Key"] = RelayApiKey;
+                if (!string.IsNullOrEmpty(RelayApiKey))
+                    request.Headers["X-Api-Key"] = RelayApiKey;
                 request.Headers["X-Room"] = RelayRoom;
                 request.Headers["X-Sender"] = outbound.SenderUuid;
                 request.Headers["X-Event-Id"] = outbound.EventId;
@@ -257,7 +258,8 @@ namespace TalentTrade
                 request.Timeout = RequestTimeoutMs;
                 request.ReadWriteTimeout = RequestTimeoutMs;
                 request.Proxy = null;
-                request.Headers["X-Api-Key"] = RelayApiKey;
+                if (!string.IsNullOrEmpty(RelayApiKey))
+                    request.Headers["X-Api-Key"] = RelayApiKey;
 
                 string responseText;
                 using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())

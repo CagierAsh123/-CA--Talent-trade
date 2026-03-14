@@ -22,6 +22,8 @@ namespace TalentTrade
 
         private SubTab activeSubTab = SubTab.Market;
         private readonly MarketPanel marketPanel = new MarketPanel();
+        private readonly RentalPanel rentalPanel = new RentalPanel();
+        private readonly DirectTradePanel directTradePanel = new DirectTradePanel();
 
         public void Draw(Rect inRect)
         {
@@ -93,8 +95,7 @@ namespace TalentTrade
 
         private void DrawDirectTradePanel(Rect rect)
         {
-            // TODO: Phase 4 — DirectTradePanel
-            Widgets.NoneLabelCenteredVertically(rect, "TalentTrade_comingSoon".Translate());
+            directTradePanel.Draw(rect);
         }
 
         private void DrawMarketPanel(Rect rect)
@@ -104,8 +105,7 @@ namespace TalentTrade
 
         private void DrawRentalPanel(Rect rect)
         {
-            // TODO: Phase 5 — RentalPanel
-            Widgets.NoneLabelCenteredVertically(rect, "TalentTrade_comingSoon".Translate());
+            rentalPanel.Draw(rect);
         }
     }
 }

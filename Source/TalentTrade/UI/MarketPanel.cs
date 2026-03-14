@@ -18,7 +18,6 @@ namespace TalentTrade
         private const float SPACING = 6f;
 
         private Vector2 listScrollPos;
-        private Vector2 myListScrollPos;
         private bool showMyListings;
 
         // Sell flow state

@@ -256,6 +256,91 @@ namespace TalentTrade
             }
         }
 
+        /// <summary>
+        /// Register a local rental listing (owner side). Stores the held pawn and serialized data.
+        /// </summary>
+        public static void AddLocalRentalListing(string rentalId, string ownerUuid, string ownerName, PawnSummary summary,
+            int pricePerDay, int maxDays, int deposit, Pawn heldPawn, string b64PawnData)
+        {
+            RentalContract contract = new RentalContract
+            {
+                Id = rentalId,
+                OwnerUuid = ownerUuid,
+                OwnerName = ownerName,
+                Summary = summary,
+                PricePerDay = pricePerDay,
+                MaxDays = maxDays,
+                Deposit = deposit,
+                State = RentalContractState.Listed,
+                OriginalPawnData = b64PawnData
+            };
+
+            lock (RentalLock)
+            {
+                RentalContracts[rentalId] = contract;
+            }
+        }
+
+        /// <summary>
+        /// Restore a delisted rental pawn back to the map (owner cancels listing).
+        /// </summary>
+        public static void RestoreDelistedRentalPawn(string rentalId)
+        {
+            string b64PawnData;
+            lock (RentalLock)
+            {
+                RentalContract contract;
+                if (!RentalContracts.TryGetValue(rentalId, out contract))
+                {
+                    Log.Warning("【三角洲贸易】RestoreDelistedRentalPawn: No contract for " + rentalId);
+                    return;
+                }
+                b64PawnData = contract.OriginalPawnData;
+                RentalContracts.Remove(rentalId);
+            }
+
+            if (string.IsNullOrEmpty(b64PawnData))
+            {
+                Log.Warning("【三角洲贸易】RestoreDelistedRentalPawn: No pawn data for " + rentalId);
+                return;
+            }
+
+            EnqueueMainThread(() =>
+            {
+                Pawn pawn = PawnDeserializer.DeserializeAndSpawn(b64PawnData);
+                if (pawn != null)
+                {
+                    Messages.Message("TalentTrade_pawnRestored".Translate(pawn.LabelShortCap), new LookTargets(pawn), MessageTypeDefOf.NeutralEvent, false);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Return a rented pawn (renter side). Serializes and sends back to owner.
+        /// </summary>
+        public static void ReturnRentedPawn(string rentalId)
+        {
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            RentalContract contract;
+            lock (RentalLock)
+            {
+                if (!RentalContracts.TryGetValue(rentalId, out contract)) return;
+                if (contract.RenterUuid != localUuid) return;
+                if (contract.State != RentalContractState.Active) return;
+            }
+
+            // Send return message (owner will use their cached data, not ours)
+            string msg = TalentTradeProtocol.BuildRentalReturn(rentalId, localUuid, "");
+            SendProtocol(msg);
+
+            lock (RentalLock)
+            {
+                RentalContracts.Remove(rentalId);
+            }
+        }
+
         // --- Direct trade accessors ---
 
         public static DirectTrade[] GetActiveTradesSnapshot()
@@ -476,6 +561,16 @@ namespace TalentTrade
             if (parts.Length < 8) return;
             string listingId = parts[3];
             string sellerUuid = parts[4];
+
+            // Skip own echo — local listing already has LocalPawnData
+            if (sellerUuid == GetLocalUuid())
+            {
+                lock (MarketLock)
+                {
+                    if (MarketListings.ContainsKey(listingId)) return;
+                }
+            }
+
             string b64Summary = parts[5];
             int priceSilver;
             if (!int.TryParse(parts[6], out priceSilver)) return;
@@ -675,37 +770,216 @@ namespace TalentTrade
 
         private static void HandleTradeRequest(string[] parts)
         {
-            // TODO: Phase 4
+            // PHXTT|v1|treq|tradeId|initiatorUuid|targetUuid|b64InitiatorName
+            if (parts.Length < 7) return;
+            string tradeId = parts[3];
+            string initiatorUuid = parts[4];
+            string targetUuid = parts[5];
+            string initiatorName = TalentTradeProtocol.DecodeField(parts[6]);
+
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+            if (targetUuid != localUuid) return;
+
+            DirectTrade trade = new DirectTrade
+            {
+                Id = tradeId,
+                InitiatorUuid = initiatorUuid,
+                TargetUuid = targetUuid,
+                InitiatorName = initiatorName,
+                TargetName = GetLocalDisplayName(),
+                State = DirectTradeState.Pending,
+                CreatedAtUtc = DateTime.UtcNow,
+                ExpiresAtUtc = DateTime.UtcNow.AddMinutes(5)
+            };
+
+            lock (TradeLock)
+            {
+                ActiveTrades[tradeId] = trade;
+            }
+
+            EnqueueMainThread(() =>
+            {
+                Messages.Message(
+                    "TalentTrade_tradeRequestReceived".Translate(initiatorName),
+                    MessageTypeDefOf.NeutralEvent,
+                    false);
+            });
         }
 
         private static void HandleTradeAccept(string[] parts)
         {
-            // TODO: Phase 4
+            // PHXTT|v1|tacc|tradeId|responderUuid
+            if (parts.Length < 5) return;
+            string tradeId = parts[3];
+            string responderUuid = parts[4];
+
+            lock (TradeLock)
+            {
+                DirectTrade trade;
+                if (!ActiveTrades.TryGetValue(tradeId, out trade)) return;
+                if (trade.TargetUuid != responderUuid) return;
+                trade.State = DirectTradeState.Negotiating;
+            }
         }
 
         private static void HandleTradeReject(string[] parts)
         {
-            // TODO: Phase 4
+            // PHXTT|v1|trej|tradeId|responderUuid
+            if (parts.Length < 5) return;
+            string tradeId = parts[3];
+
+            lock (TradeLock)
+            {
+                DirectTrade trade;
+                if (!ActiveTrades.TryGetValue(tradeId, out trade)) return;
+                trade.State = DirectTradeState.Cancelled;
+                ActiveTrades.Remove(tradeId);
+            }
+
+            EnqueueMainThread(() =>
+            {
+                Messages.Message("TalentTrade_tradeCancelled".Translate(), MessageTypeDefOf.NeutralEvent, false);
+            });
         }
 
         private static void HandleTradeOffer(string[] parts)
         {
-            // TODO: Phase 4
+            // PHXTT|v1|toff|tradeId|senderUuid|b64OfferJson
+            if (parts.Length < 6) return;
+            string tradeId = parts[3];
+            string senderUuid = parts[4];
+            string b64Offer = parts[5];
+
+            lock (TradeLock)
+            {
+                DirectTrade trade;
+                if (!ActiveTrades.TryGetValue(tradeId, out trade)) return;
+                if (trade.State != DirectTradeState.Negotiating && trade.State != DirectTradeState.Accepted)
+                {
+                    trade.State = DirectTradeState.Negotiating;
+                }
+
+                TradeOffer offer = TradeOfferSerializer.FromBase64(b64Offer);
+                if (offer == null) return;
+
+                if (senderUuid == trade.InitiatorUuid)
+                {
+                    trade.InitiatorOffer = offer;
+                    trade.InitiatorConfirmed = false;
+                }
+                else if (senderUuid == trade.TargetUuid)
+                {
+                    trade.TargetOffer = offer;
+                    trade.TargetConfirmed = false;
+                }
+            }
         }
 
         private static void HandleTradeLock(string[] parts)
         {
-            // TODO: Phase 4
+            // PHXTT|v1|tlock|tradeId|senderUuid
+            if (parts.Length < 5) return;
+            string tradeId = parts[3];
+            string senderUuid = parts[4];
+
+            lock (TradeLock)
+            {
+                DirectTrade trade;
+                if (!ActiveTrades.TryGetValue(tradeId, out trade)) return;
+
+                if (senderUuid == trade.InitiatorUuid)
+                    trade.InitiatorConfirmed = true;
+                else if (senderUuid == trade.TargetUuid)
+                    trade.TargetConfirmed = true;
+
+                // Both confirmed → execute
+                if (trade.InitiatorConfirmed && trade.TargetConfirmed)
+                {
+                    trade.State = DirectTradeState.Executing;
+                    ExecuteDirectTrade(trade);
+                }
+            }
         }
 
         private static void HandleTradeExecute(string[] parts)
         {
-            // TODO: Phase 4
+            // PHXTT|v1|texe|tradeId|senderUuid|b64CompressedPawnData|b64CompressedItems
+            if (parts.Length < 6) return;
+            string tradeId = parts[3];
+            string senderUuid = parts[4];
+            string b64PawnData = parts[5];
+            string b64Items = parts.Length > 6 ? parts[6] : "";
+
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            DirectTrade trade;
+            lock (TradeLock)
+            {
+                if (!ActiveTrades.TryGetValue(tradeId, out trade)) return;
+                // Only accept if we're the other party
+                if (senderUuid == localUuid) return;
+            }
+
+            // Spawn received pawns
+            if (!string.IsNullOrEmpty(b64PawnData))
+            {
+                EnqueueMainThread(() =>
+                {
+                    // b64PawnData may contain multiple pawns separated by ';'
+                    string[] pawnDatas = b64PawnData.Split(';');
+                    for (int i = 0; i < pawnDatas.Length; i++)
+                    {
+                        if (string.IsNullOrEmpty(pawnDatas[i])) continue;
+                        Pawn pawn = PawnDeserializer.DeserializeAndSpawn(pawnDatas[i]);
+                        if (pawn != null)
+                        {
+                            Messages.Message(
+                                "TalentTrade_pawnReceivedMessage".Translate(pawn.LabelShortCap),
+                                new LookTargets(pawn),
+                                MessageTypeDefOf.PositiveEvent,
+                                false);
+                        }
+                    }
+                });
+            }
+
+            lock (TradeLock)
+            {
+                trade.State = DirectTradeState.Completed;
+                ActiveTrades.Remove(tradeId);
+            }
         }
 
         private static void HandleTradeCancel(string[] parts)
         {
-            // TODO: Phase 4
+            // PHXTT|v1|tcan|tradeId|senderUuid
+            if (parts.Length < 5) return;
+            string tradeId = parts[3];
+
+            DirectTrade trade;
+            lock (TradeLock)
+            {
+                if (!ActiveTrades.TryGetValue(tradeId, out trade)) return;
+                trade.State = DirectTradeState.Cancelled;
+            }
+
+            // Restore held pawns
+            EnqueueMainThread(() =>
+            {
+                RestoreHeldPawns(trade);
+            });
+
+            lock (TradeLock)
+            {
+                ActiveTrades.Remove(tradeId);
+            }
+
+            EnqueueMainThread(() =>
+            {
+                Messages.Message("TalentTrade_tradeCancelled".Translate(), MessageTypeDefOf.NeutralEvent, false);
+            });
         }
 
         private static void HandleRentalList(string[] parts)
@@ -714,6 +988,16 @@ namespace TalentTrade
             if (parts.Length < 10) return;
             string rentalId = parts[3];
             string ownerUuid = parts[4];
+
+            // Skip own echo — local contract already has OriginalPawnData
+            if (ownerUuid == GetLocalUuid())
+            {
+                lock (RentalLock)
+                {
+                    if (RentalContracts.ContainsKey(rentalId)) return;
+                }
+            }
+
             string b64Summary = parts[5];
             int pricePerDay;
             if (!int.TryParse(parts[6], out pricePerDay)) return;
@@ -1124,6 +1408,236 @@ namespace TalentTrade
                 }
                 Log.Warning($"【三角洲贸易】Purchase timeout for listing {listingId}, seller offline");
                 Messages.Message("TalentTrade_sellerOffline".Translate(), MessageTypeDefOf.RejectInput, false);
+            }
+        }
+
+        // --- Direct Trade helpers ---
+
+        private static void ExecuteDirectTrade(DirectTrade trade)
+        {
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            bool isInitiator = trade.InitiatorUuid == localUuid;
+            TradeOffer myOffer = isInitiator ? trade.InitiatorOffer : trade.TargetOffer;
+
+            if (myOffer == null || myOffer.PawnData == null || myOffer.PawnData.Count == 0)
+            {
+                // No pawns to send, just send empty execute
+                string msg = TalentTradeProtocol.BuildTradeExecute(trade.Id, localUuid, "", "");
+                SendProtocol(msg);
+                return;
+            }
+
+            // Serialize all held pawns
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            for (int i = 0; i < myOffer.PawnData.Count; i++)
+            {
+                if (i > 0) sb.Append(';');
+                sb.Append(myOffer.PawnData[i]);
+            }
+
+            string pawnMsg = TalentTradeProtocol.BuildTradeExecute(trade.Id, localUuid, sb.ToString(), "");
+            SendProtocol(pawnMsg);
+
+            lock (TradeLock)
+            {
+                trade.State = DirectTradeState.Completed;
+                ActiveTrades.Remove(trade.Id);
+            }
+        }
+
+        private static void RestoreHeldPawns(DirectTrade trade)
+        {
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            bool isInitiator = trade.InitiatorUuid == localUuid;
+            TradeOffer myOffer = isInitiator ? trade.InitiatorOffer : trade.TargetOffer;
+
+            if (myOffer == null || myOffer.PawnData == null) return;
+
+            for (int i = 0; i < myOffer.PawnData.Count; i++)
+            {
+                string b64 = myOffer.PawnData[i];
+                if (string.IsNullOrEmpty(b64)) continue;
+                Pawn pawn = PawnDeserializer.DeserializeAndSpawn(b64);
+                if (pawn != null)
+                {
+                    Messages.Message(
+                        "TalentTrade_pawnRestored".Translate(pawn.LabelShortCap),
+                        new LookTargets(pawn),
+                        MessageTypeDefOf.NeutralEvent,
+                        false);
+                }
+            }
+        }
+
+        // --- Direct Trade local API (for UI) ---
+
+        public static DirectTrade GetTrade(string tradeId)
+        {
+            lock (TradeLock)
+            {
+                DirectTrade trade;
+                if (ActiveTrades.TryGetValue(tradeId, out trade)) return trade;
+                return null;
+            }
+        }
+
+        public static string InitiateDirectTrade(string targetUuid)
+        {
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return null;
+
+            string tradeId = Guid.NewGuid().ToString("N").Substring(0, 12);
+            string localName = GetLocalDisplayName();
+
+            DirectTrade trade = new DirectTrade
+            {
+                Id = tradeId,
+                InitiatorUuid = localUuid,
+                TargetUuid = targetUuid,
+                InitiatorName = localName,
+                TargetName = "",
+                State = DirectTradeState.Pending,
+                CreatedAtUtc = DateTime.UtcNow,
+                ExpiresAtUtc = DateTime.UtcNow.AddMinutes(5)
+            };
+
+            lock (TradeLock)
+            {
+                ActiveTrades[tradeId] = trade;
+            }
+
+            string msg = TalentTradeProtocol.BuildTradeRequest(tradeId, localUuid, targetUuid, localName);
+            SendProtocol(msg);
+
+            Messages.Message("TalentTrade_tradeRequestSent".Translate(targetUuid), MessageTypeDefOf.NeutralEvent, false);
+            return tradeId;
+        }
+
+        public static void AcceptTrade(string tradeId)
+        {
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            lock (TradeLock)
+            {
+                DirectTrade trade;
+                if (!ActiveTrades.TryGetValue(tradeId, out trade)) return;
+                if (trade.TargetUuid != localUuid) return;
+                trade.State = DirectTradeState.Negotiating;
+            }
+
+            string msg = TalentTradeProtocol.BuildTradeAccept(tradeId, localUuid);
+            SendProtocol(msg);
+        }
+
+        public static void RejectTrade(string tradeId)
+        {
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            lock (TradeLock)
+            {
+                DirectTrade trade;
+                if (!ActiveTrades.TryGetValue(tradeId, out trade)) return;
+                trade.State = DirectTradeState.Cancelled;
+                ActiveTrades.Remove(tradeId);
+            }
+
+            string msg = TalentTradeProtocol.BuildTradeReject(tradeId, localUuid);
+            SendProtocol(msg);
+        }
+
+        public static void CancelTrade(string tradeId)
+        {
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            DirectTrade trade;
+            lock (TradeLock)
+            {
+                if (!ActiveTrades.TryGetValue(tradeId, out trade)) return;
+                trade.State = DirectTradeState.Cancelled;
+            }
+
+            EnqueueMainThread(() => RestoreHeldPawns(trade));
+
+            lock (TradeLock)
+            {
+                ActiveTrades.Remove(tradeId);
+            }
+
+            string msg = TalentTradeProtocol.BuildTradeCancel(tradeId, localUuid);
+            SendProtocol(msg);
+        }
+
+        public static void SendTradeOffer(string tradeId, TradeOffer offer)
+        {
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            lock (TradeLock)
+            {
+                DirectTrade trade;
+                if (!ActiveTrades.TryGetValue(tradeId, out trade)) return;
+
+                if (localUuid == trade.InitiatorUuid)
+                {
+                    trade.InitiatorOffer = offer;
+                    trade.InitiatorConfirmed = false;
+                }
+                else
+                {
+                    trade.TargetOffer = offer;
+                    trade.TargetConfirmed = false;
+                }
+            }
+
+            string b64Offer = TradeOfferSerializer.ToBase64(offer);
+            string msg = TalentTradeProtocol.BuildTradeOffer(tradeId, localUuid, b64Offer);
+            SendProtocol(msg);
+        }
+
+        public static void LockTrade(string tradeId)
+        {
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+
+            lock (TradeLock)
+            {
+                DirectTrade trade;
+                if (!ActiveTrades.TryGetValue(tradeId, out trade)) return;
+
+                if (localUuid == trade.InitiatorUuid)
+                    trade.InitiatorConfirmed = true;
+                else
+                    trade.TargetConfirmed = true;
+
+                if (trade.InitiatorConfirmed && trade.TargetConfirmed)
+                {
+                    trade.State = DirectTradeState.Executing;
+                    ExecuteDirectTrade(trade);
+                    return;
+                }
+            }
+
+            string msg = TalentTradeProtocol.BuildTradeLock(tradeId, localUuid);
+            SendProtocol(msg);
+        }
+
+        public static string[] GetOnlineUserUuids()
+        {
+            try
+            {
+                if (PhinixClient.Client.Instance == null) return new string[0];
+                return PhinixClient.Client.Instance.GetUserUuids(true);
+            }
+            catch
+            {
+                return new string[0];
             }
         }
 

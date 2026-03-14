@@ -20,6 +20,8 @@ namespace TalentTrade
         public List<PawnSummary> Pawns = new List<PawnSummary>();
         public int SilverAmount;
         public List<string> ItemSummaries = new List<string>();
+        // Serialized pawn data (b64 compressed XML) — populated when pawns are added to the offer
+        public List<string> PawnData = new List<string>();
     }
 
     public class DirectTrade

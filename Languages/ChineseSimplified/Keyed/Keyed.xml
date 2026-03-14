@@ -77,6 +77,20 @@
   <TalentTrade_rentalPawnDiedTitle>租借殖民者死亡</TalentTrade_rentalPawnDiedTitle>
   <TalentTrade_rentalExpired>殖民者 {0} 的租借到期，已自动归还。</TalentTrade_rentalExpired>
   <TalentTrade_rentalExpiredTitle>租借到期</TalentTrade_rentalExpiredTitle>
+  <TalentTrade_rentalRentConfirm>确认租借 {0}？日租金: {1} 银，租 {2} 天，押金: {3} 银</TalentTrade_rentalRentConfirm>
+  <TalentTrade_rentalDays>天数</TalentTrade_rentalDays>
+  <TalentTrade_rentalSelectDays>选择天数</TalentTrade_rentalSelectDays>
+  <TalentTrade_rentalNoListings>暂无出租。</TalentTrade_rentalNoListings>
+
+  <!-- Direct Trade extra -->
+  <TalentTrade_tradeConfirmSend>确认发送</TalentTrade_tradeConfirmSend>
+  <TalentTrade_tradeUnlock>解锁</TalentTrade_tradeUnlock>
+  <TalentTrade_tradeBothLocked>双方已确认，执行交易中…</TalentTrade_tradeBothLocked>
+  <TalentTrade_tradeCompleted>交易完成！</TalentTrade_tradeCompleted>
+  <TalentTrade_tradeCancelled>交易已取消。</TalentTrade_tradeCancelled>
+  <TalentTrade_tradeRemovePawn>移除</TalentTrade_tradeRemovePawn>
+  <TalentTrade_tradeAcceptRequest>接受</TalentTrade_tradeAcceptRequest>
+  <TalentTrade_tradeRejectRequest>拒绝</TalentTrade_tradeRejectRequest>
 
   <!-- Pawn transfer -->
   <TalentTrade_transferReport>即将发送殖民者 "{0}" 给 {1}</TalentTrade_transferReport>
