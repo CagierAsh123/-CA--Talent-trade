@@ -57,7 +57,7 @@ namespace TalentTrade
                 sellMode = !sellMode;
                 if (!sellMode) ResetSellState();
             }
-            x += 120f + SPACING;
+            x += 120f + SPACING + 20f;
 
             // My Listings toggle
             if (!sellMode)
@@ -73,7 +73,7 @@ namespace TalentTrade
             // Refresh
             if (!sellMode)
             {
-                Rect refreshRect = new Rect(rect.xMax - 80f, rect.y, 80f, rect.height);
+                Rect refreshRect = new Rect(rect.xMax - 80f - 20f, rect.y, 80f, rect.height);
                 if (Widgets.ButtonText(refreshRect, "TalentTrade_refresh".Translate()))
                 {
                     string uuid = TalentTradeManager.GetLocalUuid();

@@ -11,7 +11,7 @@ namespace TalentTrade
         public int TabIndex = -1;
 
         private const float SUB_TAB_HEIGHT = 30f;
-        private const float SPACING = 10f;
+        private const float SPACING = 6f;
 
         private enum SubTab
         {
@@ -32,34 +32,39 @@ namespace TalentTrade
                 return;
             }
 
-            // Sub-tab bar
-            Rect tabBarRect = new Rect(inRect.x, inRect.y, inRect.width, SUB_TAB_HEIGHT);
+            // Sub-tab bar (drawn above the content box)
+            Rect tabBarRect = new Rect(inRect.x, inRect.y + 4f, inRect.width, SUB_TAB_HEIGHT);
             DrawSubTabs(tabBarRect);
 
-            // Content area
-            Rect contentRect = new Rect(inRect.x, inRect.y + SUB_TAB_HEIGHT + SPACING, inRect.width, inRect.height - SUB_TAB_HEIGHT - SPACING);
+            // Content area (below sub-tabs, with its own box)
+            float contentY = inRect.y + SUB_TAB_HEIGHT + SPACING;
+            Rect contentRect = new Rect(inRect.x, contentY, inRect.width, inRect.height - SUB_TAB_HEIGHT - SPACING);
+            Widgets.DrawMenuSection(contentRect);
+            Rect innerContent = contentRect.ContractedBy(4f);
 
             switch (activeSubTab)
             {
                 case SubTab.DirectTrade:
-                    DrawDirectTradePanel(contentRect);
+                    DrawDirectTradePanel(innerContent);
                     break;
                 case SubTab.Market:
-                    DrawMarketPanel(contentRect);
+                    DrawMarketPanel(innerContent);
                     break;
                 case SubTab.Rental:
-                    DrawRentalPanel(contentRect);
+                    DrawRentalPanel(innerContent);
                     break;
             }
         }
 
         private void DrawSubTabs(Rect rect)
         {
-            float tabWidth = rect.width / 3f;
+            float tabWidth = (rect.width - 40f) / 3f;
+            float totalWidth = tabWidth * 3f;
+            float startX = rect.x + (rect.width - totalWidth) / 2f;
 
-            Rect tab1 = new Rect(rect.x, rect.y, tabWidth, rect.height);
-            Rect tab2 = new Rect(rect.x + tabWidth, rect.y, tabWidth, rect.height);
-            Rect tab3 = new Rect(rect.x + tabWidth * 2f, rect.y, tabWidth, rect.height);
+            Rect tab1 = new Rect(startX, rect.y, tabWidth, rect.height);
+            Rect tab2 = new Rect(startX + tabWidth, rect.y, tabWidth, rect.height);
+            Rect tab3 = new Rect(startX + tabWidth * 2f, rect.y, tabWidth, rect.height);
 
             if (DrawSubTabButton(tab1, "TalentTrade_subTabDirectTrade".Translate(), activeSubTab == SubTab.DirectTrade))
             {
@@ -89,7 +94,6 @@ namespace TalentTrade
         private void DrawDirectTradePanel(Rect rect)
         {
             // TODO: Phase 4 — DirectTradePanel
-            Widgets.DrawMenuSection(rect);
             Widgets.NoneLabelCenteredVertically(rect, "TalentTrade_comingSoon".Translate());
         }
 
@@ -101,7 +105,6 @@ namespace TalentTrade
         private void DrawRentalPanel(Rect rect)
         {
             // TODO: Phase 5 — RentalPanel
-            Widgets.DrawMenuSection(rect);
             Widgets.NoneLabelCenteredVertically(rect, "TalentTrade_comingSoon".Translate());
         }
     }
