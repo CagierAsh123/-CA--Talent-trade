@@ -4,8 +4,37 @@
   <packageId>Natsuki.TalentTrade</packageId>
   <author>Cagier.阳</author>
   <description>
-Adds a talent trade tab to Phinix chat. Players can trade, sell, and rent pawns with each other.
-为 Phinix 聊天新增"人才贸易"标签页。玩家之间可以交易、出售和租借殖民者。
+[h1]人才贸易 Talent Trade[/h1]
+
+Phinix 的 Pawn 交易附属 mod，弥补超凡智能之间无法三角贸易的遗憾。
+A Phinix add-on for pawn trading between players across different saves.
+
+[h2]功能 Features[/h2]
+
+交易界面在 Phinix 界面中打开，与会话、交易同级，包含三个板块：
+
+[b]直接交易[/b] — 玩家对玩家，实时协商，双方各自添加小人和银子，确认后同时交换。
+[b]公共市场[/b] — 摆地摊，上架小人标价出售，其他玩家浏览购买，空投舱送达。
+[b]租借系统[/b] — 出租你的小人，设定日租金、押金和最大天数。到期自动归还，死亡从备份复活。
+
+[h2]技术说明 Technical[/h2]
+
+Mod 采用序列化/反序列化传输 Pawn 数据，内置 XML 过滤，自动适应不同玩家的不同 mod 环境。
+缺失的 mod 对应的装备、植入体等会在反序列化时被安全跳过，不会导致崩溃。
+
+[h2]已知问题 Known Issues[/h2]
+
+接收小人时日志中会出现若干 hediff/need 相关的警告（如图4），这是 RimWorld 原版 Scribe 系统的时序问题，不影响使用。
+
+[h2]链接 Links[/h2]
+
+GitHub: https://github.com/CagierAsh123/-CA--Talent-trade
+爱发电: https://ifdian.net/a/cagier
+
+[h2]依赖 Requirements[/h2]
+
+- Phinix（必需）
+- Harmony（必需）
   </description>
   <supportedVersions>
     <li>1.6</li>
