@@ -1,3 +1,5 @@
 *.html
 .claude/settings.local.json
 .codex/hooks.json
+AGENTS.md
+Server/relay.py
