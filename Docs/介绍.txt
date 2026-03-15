@@ -1,0 +1,96 @@
+中文----------------------------------------------------------------------------------------------------------------------------
+[h1]人才贸易[/h1]
+
+Phinix 的 Pawn 交易附属 mod，弥补超凡智能之间无法三角贸易的遗憾。
+
+[h2]功能[/h2]
+
+交易界面在 Phinix 界面中打开，与会话、交易同级，包含三个板块：
+
+[b]直接交易[/b] — 玩家对玩家，实时协商，双方各自添加小人和银子，确认后同时交换。
+[b]公共市场[/b] — 摆地摊，上架小人标价出售，其他玩家浏览购买，空投舱送达。
+[b]租借系统[/b] — 出租你的小人，设定日租金、押金和最大天数。到期自动归还，死亡从备份复活。
+
+[h2]技术说明[/h2]
+
+Mod 采用序列化/反序列化传输 Pawn 数据，内置 XML 过滤，自动适应不同玩家的不同 mod 环境。
+缺失的 mod 对应的装备、植入体等会在反序列化时被安全跳过，不会导致崩溃。（大概）
+
+[h2]已知问题[/h2]
+
+接收小人时日志中会出现若干 hediff/need 相关的警告（如图4），这是 RimWorld 原版 Scribe 系统的时序问题，不影响使用。
+（泰南估计没想过有人会序列化反序列化pawn发给别人）
+
+[h2]必读[/h2]
+可能有很多bug，因为这玩意是完全的逆天而行，反馈需要如下信息我才能处理
+1.你干了什么-请列出你的操作步骤
+2.发生了什么-请描述问题
+3.报错发我-报错发我
+
+[h2]链接[/h2]
+
+GitHub: https://github.com/CagierAsh123/-CA--Talent-trade
+爱发电: https://ifdian.net/a/cagier
+QQ群：693252771（群内有bot-白桃棉，你可以@她，当然，不定期在线）
+
+[h2]依赖[/h2]
+
+- Phinix（必需）
+- Harmony（必需）
+- 适用于环世界1.6
+
+ [h2]vibe coding和呼吸一样简单了 [/h2]
+
+
+英文---------------------------------------------------------------------------------------------------------------------------------
+[h1] Talent Trade [/h1]
+
+(Phinix’s Pawn Trade Add-on Mod)
+
+This mod addresses the inability to conduct triangular trade between superintelligent entities (players).
+This add-on for Phinix mod adds a comprehensive pawn (character) trading system.
+
+[h2] Features [/h2]
+
+The trade interface opens within the Phinix interface, at the same level as Chat and Trade, and includes three sections:
+
+[b] Direct Trade [/b]
+Player‑to‑player real‑time negotiation. Both sides can add pawns and silver; the exchange occurs simultaneously upon confirmation.
+
+[b] Public Market [/b]
+A bulletin‑board‑style market. List your pawns for sale, other players can browse and purchase; buyers receive the pawn via drop‑pod.
+
+[b] Rental System [/b]
+Lease your pawns: set daily rent, deposit, and maximum rental days. Pawns return automatically when the term expires; if they die, a backup copy is resurrected.
+
+[h2] Technical Notes [/h2]
+
+The mod uses serialization/deserialization to transmit pawn data. Built‑in XML filtering automatically adapts to different players’ mod setups.
+Equipment, implants, etc., belonging to missing mods are safely skipped during deserialization—no crashes.（Maybe）
+
+[h2] Known Issues [/h2]
+
+Several hediff/need‑related warnings may appear in the log when receiving a pawn (see image 4). This is caused by a timing quirk of RimWorld’s vanilla Scribe system and does not affect functionality.
+(Tynan probably never imagined anyone would serialize/deserialize pawns and send them to another player.)
+
+[h2] Must‑Read [/h2]
+
+There may be many bugs, because this mod essentially goes against the game’s intended logic. To help me fix issues, please provide the following information:
+
+What you did — list your exact steps.
+What happened — describe the problem.
+Send me the error — copy the error log and send it to me.
+
+[h2] Links [/h2]
+
+GitHub: https://github.com/CagierAsh123/-CA--Talent-trade
+Aifadian: https://ifdian.net/a/cagier
+QQ Group: 693252771 (The group has a bot named Baitaomian 白桃棉; you can @ her, though she is not always online.)
+
+[h2] Dependencies [/h2]
+
+Phinix (required)
+Harmony (required)
+Compatible with RimWorld 1.6
+
+ [h2]Vibe coding has become as natural as breathing. [/h2]
