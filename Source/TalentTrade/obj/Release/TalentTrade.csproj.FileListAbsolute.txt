@@ -1,7 +1,0 @@
-B:\rimworld-code\_SourceCode\Develop\【CA】人才贸易-Talent trade\Source\TalentTrade\obj\Release\TalentTrade.csproj.AssemblyReference.cache
-B:\rimworld-code\_SourceCode\Develop\【CA】人才贸易-Talent trade\Source\TalentTrade\obj\Release\TalentTrade.GeneratedMSBuildEditorConfig.editorconfig
-B:\rimworld-code\_SourceCode\Develop\【CA】人才贸易-Talent trade\Source\TalentTrade\obj\Release\TalentTrade.csproj.CoreCompileInputs.cache
-B:\rimworld-code\_SourceCode\Develop\【CA】人才贸易-Talent trade\Assemblies\TalentTrade.dll
-B:\rimworld-code\_SourceCode\Develop\【CA】人才贸易-Talent trade\Assemblies\TalentTrade.pdb
-B:\rimworld-code\_SourceCode\Develop\【CA】人才贸易-Talent trade\Source\TalentTrade\obj\Release\TalentTrade.dll
-B:\rimworld-code\_SourceCode\Develop\【CA】人才贸易-Talent trade\Source\TalentTrade\obj\Release\TalentTrade.pdb
