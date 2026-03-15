@@ -110,4 +110,7 @@
   <TalentTrade_forceCleanup>强制清理</TalentTrade_forceCleanup>
   <TalentTrade_noListingsToClean>没有需要清理的挂牌。</TalentTrade_noListingsToClean>
   <TalentTrade_cleanupDone>已清理 {0} 条挂牌。殖民者已送往亚空间。</TalentTrade_cleanupDone>
+  <TalentTrade_buyLetterTitle>殖民者已售出</TalentTrade_buyLetterTitle>
+  <TalentTrade_buyLetterText>{0} 购买了你的殖民者 {1}，售价 {2} 银。</TalentTrade_buyLetterText>
+  <TalentTrade_ocPawnBlocked>该殖民者受 OC 身份保护，无法交易。不要问我为什么，去问绿米。</TalentTrade_ocPawnBlocked>
 </LanguageData>

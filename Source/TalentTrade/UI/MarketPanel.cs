@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -299,10 +300,17 @@ namespace TalentTrade
             if (selectedPawn == null || priceValue <= 0) return;
 
             // Prevent listing a pawn that is not on the map
-            // (e.g. inside a drop pod, despawned, dead)
             if (!selectedPawn.Spawned || selectedPawn.Dead)
             {
                 Messages.Message("TalentTrade_noPawnsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
+                selectedPawn = null;
+                return;
+            }
+
+            // Block AriandelLibrary OC pawns
+            if (IsAriandelOCPawn(selectedPawn))
+            {
+                Messages.Message("TalentTrade_ocPawnBlocked".Translate(), MessageTypeDefOf.RejectInput, false);
                 selectedPawn = null;
                 return;
             }
@@ -409,6 +417,65 @@ namespace TalentTrade
             selectedPawn = null;
             priceBuffer = "100";
             priceValue = 100;
+        }
+
+        // --- AriandelLibrary OC pawn detection ---
+
+        private static bool? ocCheckAvailable;
+        private static object ocKindToIdMap;
+        private static MethodInfo ocContainsKeyMethod;
+
+        /// <summary>
+        /// Returns true if the pawn's kindDef is registered in AriandelLibrary's SpecialPawnRegistry
+        /// (i.e. it's an OC character with a unique ID that will be deleted if traded).
+        /// </summary>
+        private static bool IsAriandelOCPawn(Pawn pawn)
+        {
+            if (pawn == null || pawn.kindDef == null) return false;
+
+            if (!ocCheckAvailable.HasValue)
+            {
+                try
+                {
+                    Type registryType = GenTypes.GetTypeInAnyAssembly("AriandelLibrary.SpecialPawnRegistry");
+                    if (registryType != null)
+                    {
+                        FieldInfo mapField = registryType.GetField("KindToIdMap", BindingFlags.Public | BindingFlags.Static);
+                        if (mapField != null)
+                        {
+                            ocKindToIdMap = mapField.GetValue(null);
+                            ocContainsKeyMethod = ocKindToIdMap.GetType().GetMethod("ContainsKey");
+                            ocCheckAvailable = ocContainsKeyMethod != null;
+                        }
+                        else
+                        {
+                            ocCheckAvailable = false;
+                        }
+                    }
+                    else
+                    {
+                        ocCheckAvailable = false;
+                    }
+                }
+                catch
+                {
+                    ocCheckAvailable = false;
+                }
+            }
+
+            if (ocCheckAvailable == true && ocKindToIdMap != null && ocContainsKeyMethod != null)
+            {
+                try
+                {
+                    return (bool)ocContainsKeyMethod.Invoke(ocKindToIdMap, new object[] { pawn.kindDef });
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            return false;
         }
 
         private void ForceCleanupAllMyListings()

@@ -45,7 +45,16 @@ namespace TalentTrade
 
         // --- Purchase timeout tracking ---
         private static readonly Dictionary<string, int> PendingPurchases = new Dictionary<string, int>();
-        private const int PURCHASE_TIMEOUT_TICKS = 600; // 10 seconds at 60 FPS
+        private const int PURCHASE_TIMEOUT_TICKS = 1800; // 30 seconds at 60 FPS
+
+        // --- Listing expiry & heartbeat ---
+        private const double LISTING_EXPIRY_MINUTES = 5.0;
+        private const double HEARTBEAT_INTERVAL_MINUTES = 3.5;
+        private static DateTime lastHeartbeatUtc = DateTime.MinValue;
+        private static DateTime lastExpiryCheckUtc = DateTime.MinValue;
+
+        // --- Save session token ---
+        private static string activeSaveToken = null;
 
         public static void Initialize(Client client)
         {
@@ -81,6 +90,8 @@ namespace TalentTrade
             {
                 RunMainThreadQueue();
                 CheckPurchaseTimeouts();
+                ExpireOldListings();
+                HeartbeatMyListings();
             }
         }
 
@@ -164,6 +175,7 @@ namespace TalentTrade
                 PriceSilver = priceSilver,
                 State = MarketListingState.Active,
                 CreatedAtUtc = DateTime.UtcNow,
+                LastRefreshUtc = DateTime.UtcNow,
                 HeldPawn = heldPawn
             };
 
@@ -562,13 +574,12 @@ namespace TalentTrade
             string listingId = parts[3];
             string sellerUuid = parts[4];
 
-            // Skip own echo — local listing already has LocalPawnData
+            // Skip own listings — we are the authority for our own data.
+            // If we still have it locally, no need to re-register from relay echo.
+            // If we don't have it locally (e.g. after delist/exit), ignore the stale relay echo.
             if (sellerUuid == GetLocalUuid())
             {
-                lock (MarketLock)
-                {
-                    if (MarketListings.ContainsKey(listingId)) return;
-                }
+                return;
             }
 
             string b64Summary = parts[5];
@@ -586,7 +597,8 @@ namespace TalentTrade
                 Summary = summary,
                 PriceSilver = priceSilver,
                 State = MarketListingState.Active,
-                CreatedAtUtc = DateTime.UtcNow
+                CreatedAtUtc = DateTime.UtcNow,
+                LastRefreshUtc = DateTime.UtcNow
             };
 
             lock (MarketLock)
@@ -640,6 +652,16 @@ namespace TalentTrade
                     return;
                 }
             }
+
+            // Notify seller via letter
+            string pawnName = listing.Summary != null ? listing.Summary.GetDisplayLabel() : "???";
+            EnqueueMainThread(() =>
+            {
+                Find.LetterStack.ReceiveLetter(
+                    "TalentTrade_buyLetterTitle".Translate(),
+                    "TalentTrade_buyLetterText".Translate(buyerName, pawnName, listing.PriceSilver.ToString()),
+                    LetterDefOf.PositiveEvent);
+            });
 
             Log.Message($"【三角洲贸易】Completing sale directly");
             CompleteSale(listingId, buyerUuid);
@@ -1377,6 +1399,81 @@ namespace TalentTrade
             }
         }
 
+        // --- Listing expiry & heartbeat ---
+
+        private static void ExpireOldListings()
+        {
+            DateTime now = DateTime.UtcNow;
+            if ((now - lastExpiryCheckUtc).TotalSeconds < 30) return;
+            lastExpiryCheckUtc = now;
+
+            string localUuid = GetLocalUuid();
+            List<string> expired = new List<string>();
+
+            lock (MarketLock)
+            {
+                foreach (var kvp in MarketListings)
+                {
+                    MarketListing l = kvp.Value;
+                    if (l.State != MarketListingState.Active) continue;
+                    // Don't expire our own listings
+                    if (l.SellerUuid == localUuid) continue;
+                    if ((now - l.LastRefreshUtc).TotalMinutes > LISTING_EXPIRY_MINUTES)
+                    {
+                        expired.Add(kvp.Key);
+                    }
+                }
+                foreach (string id in expired)
+                {
+                    MarketListings.Remove(id);
+                }
+            }
+
+            if (expired.Count > 0)
+            {
+                Log.Message($"【三角洲贸易】Expired {expired.Count} stale listings");
+            }
+        }
+
+        private static void HeartbeatMyListings()
+        {
+            DateTime now = DateTime.UtcNow;
+            if ((now - lastHeartbeatUtc).TotalMinutes < HEARTBEAT_INTERVAL_MINUTES) return;
+            lastHeartbeatUtc = now;
+
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid)) return;
+            string localName = GetLocalDisplayName();
+
+            MarketListing[] snapshot;
+            lock (MarketLock)
+            {
+                snapshot = new MarketListing[MarketListings.Count];
+                int idx = 0;
+                foreach (var kvp in MarketListings)
+                {
+                    snapshot[idx++] = kvp.Value;
+                }
+            }
+
+            int count = 0;
+            for (int i = 0; i < snapshot.Length; i++)
+            {
+                MarketListing l = snapshot[i];
+                if (l == null || l.SellerUuid != localUuid || l.State != MarketListingState.Active) continue;
+                if (l.Summary == null) continue;
+
+                string msg = TalentTradeProtocol.BuildMarketList(l.Id, localUuid, l.Summary.ToBase64(), l.PriceSilver, localName);
+                SendProtocol(msg);
+                count++;
+            }
+
+            if (count > 0)
+            {
+                Log.Message($"【三角洲贸易】Heartbeat: re-broadcast {count} listings");
+            }
+        }
+
         // --- Offline handling ---
 
         public static void TrackPurchase(string listingId)
@@ -1700,6 +1797,133 @@ namespace TalentTrade
             if (OfflineListingCache.Count > 0)
             {
                 Log.Message($"【三角洲贸易】Cached {OfflineListingCache.Count} listings for next login");
+            }
+        }
+
+        // --- Save session lifecycle ---
+
+        /// <summary>
+        /// Called from GenScene.GoToMainMenu Prefix — player is leaving the save.
+        /// Broadcasts delist for all own listings and clears static state.
+        /// Does NOT spawn pawns — recovery is handled by ReturnPendingPawns on next load.
+        /// </summary>
+        public static void OnExitSave()
+        {
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid))
+            {
+                activeSaveToken = null;
+                return;
+            }
+
+            DelistAllOwnListings(localUuid, "OnExitSave");
+
+            OfflineListingCache.Clear();
+            OfflinePawnDataCache.Clear();
+            PendingPurchases.Clear();
+            activeSaveToken = null;
+        }
+
+        /// <summary>
+        /// Called from TalentTradeGameComponent.FinalizeInit when a save is loaded.
+        /// Always cleans up orphaned listings — own listings in static state that the
+        /// loaded save doesn't know about (not in activeListingIds).
+        /// </summary>
+        public static void OnSaveSessionStart(string newToken)
+        {
+            if (string.IsNullOrEmpty(newToken)) return;
+
+            string localUuid = GetLocalUuid();
+            if (!string.IsNullOrEmpty(localUuid))
+            {
+                if (activeSaveToken != null && activeSaveToken != newToken)
+                {
+                    // Save switch — delist everything we own, it all belongs to the old save
+                    Log.Message($"【三角洲贸易】Save switch detected (old={activeSaveToken}, new={newToken}), cleaning up orphaned listings");
+                    DelistAllOwnListings(localUuid, "OnSaveSessionStart-switch");
+                    OfflineListingCache.Clear();
+                    OfflinePawnDataCache.Clear();
+                }
+                else
+                {
+                    // Same save (or first load) — delist only orphans not tracked by this save version
+                    var gc = TalentTradeGameComponent.Current;
+                    if (gc != null)
+                    {
+                        HashSet<string> tracked = gc.GetActiveListingIdsSnapshot();
+                        DelistOrphanedListings(localUuid, tracked);
+                    }
+                }
+            }
+
+            activeSaveToken = newToken;
+        }
+
+        /// <summary>
+        /// Broadcasts delist for all own active listings and removes them from static state.
+        /// </summary>
+        private static void DelistAllOwnListings(string localUuid, string caller)
+        {
+            List<string> toRemove = new List<string>();
+
+            lock (MarketLock)
+            {
+                foreach (var kvp in MarketListings)
+                {
+                    if (kvp.Value.SellerUuid == localUuid && kvp.Value.State == MarketListingState.Active)
+                    {
+                        toRemove.Add(kvp.Key);
+                    }
+                }
+
+                foreach (string id in toRemove)
+                {
+                    string msg = TalentTradeProtocol.BuildMarketDelist(id, localUuid);
+                    SendProtocol(msg);
+                    MarketListings.Remove(id);
+                    LocalPawnData.Remove(id);
+                }
+            }
+
+            if (toRemove.Count > 0)
+            {
+                Log.Message($"【三角洲贸易】{caller}: Delisted {toRemove.Count} own listings");
+            }
+        }
+
+        /// <summary>
+        /// Delists own listings that are NOT tracked by the current save version.
+        /// Handles the case: player lists a pawn, then loads an older save of the same lineage.
+        /// </summary>
+        private static void DelistOrphanedListings(string localUuid, HashSet<string> trackedIds)
+        {
+            List<string> orphans = new List<string>();
+
+            lock (MarketLock)
+            {
+                foreach (var kvp in MarketListings)
+                {
+                    if (kvp.Value.SellerUuid == localUuid && kvp.Value.State == MarketListingState.Active)
+                    {
+                        if (!trackedIds.Contains(kvp.Key))
+                        {
+                            orphans.Add(kvp.Key);
+                        }
+                    }
+                }
+
+                foreach (string id in orphans)
+                {
+                    string msg = TalentTradeProtocol.BuildMarketDelist(id, localUuid);
+                    SendProtocol(msg);
+                    MarketListings.Remove(id);
+                    LocalPawnData.Remove(id);
+                }
+            }
+
+            if (orphans.Count > 0)
+            {
+                Log.Message($"【三角洲贸易】OnSaveSessionStart: Delisted {orphans.Count} orphaned listings not tracked by loaded save");
             }
         }
     }

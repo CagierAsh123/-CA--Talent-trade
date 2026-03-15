@@ -88,4 +88,13 @@
   <!-- Notifications -->
   <TalentTrade_pawnReceivedTitle>Colonist Received</TalentTrade_pawnReceivedTitle>
   <TalentTrade_pawnReceivedMessage>You received colonist {0}.</TalentTrade_pawnReceivedMessage>
+  <TalentTrade_pawnRestored>Colonist {0} has been delisted and returned.</TalentTrade_pawnRestored>
+  <TalentTrade_sellerOffline>Seller is offline, purchase cancelled.</TalentTrade_sellerOffline>
+  <TalentTrade_cannotDelistWrongSave>Cannot delist: this listing belongs to another save.</TalentTrade_cannotDelistWrongSave>
+  <TalentTrade_forceCleanup>Force Cleanup</TalentTrade_forceCleanup>
+  <TalentTrade_noListingsToClean>No listings to clean up.</TalentTrade_noListingsToClean>
+  <TalentTrade_cleanupDone>Cleaned up {0} listings. Colonists sent to the warp.</TalentTrade_cleanupDone>
+  <TalentTrade_buyLetterTitle>Colonist Sold</TalentTrade_buyLetterTitle>
+  <TalentTrade_buyLetterText>{0} purchased your colonist {1} for {2} silver.</TalentTrade_buyLetterText>
+  <TalentTrade_ocPawnBlocked>This colonist is protected by OC identity and cannot be traded. Don't ask me why, ask Lumi.</TalentTrade_ocPawnBlocked>
 </LanguageData>

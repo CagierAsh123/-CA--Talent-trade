@@ -18,6 +18,7 @@ namespace TalentTrade
         public int PriceSilver;
         public MarketListingState State = MarketListingState.Active;
         public DateTime CreatedAtUtc;
+        public DateTime LastRefreshUtc;
 
         // Local only — held pawn (seller side)
         public Verse.Pawn HeldPawn;

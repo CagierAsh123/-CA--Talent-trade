@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using RimWorld;
 using Verse;
@@ -15,11 +16,15 @@ namespace TalentTrade
         private List<string> pendingReturnIds = new List<string>();
         private List<string> pendingReturnData = new List<string>();
 
+        // Persisted: unique identity for this save lineage
+        private string saveToken;
+
         // Runtime only: track which listings belong to THIS save session
         private HashSet<string> activeListingIds = new HashSet<string>();
 
         private static TalentTradeGameComponent current;
         public static TalentTradeGameComponent Current { get { return current; } }
+        public string SaveToken { get { return saveToken; } }
 
         public TalentTradeGameComponent(Game game) : base()
         {
@@ -29,6 +34,11 @@ namespace TalentTrade
         public override void FinalizeInit()
         {
             current = this;
+            // Generate token for new games or saves that predate this feature
+            if (string.IsNullOrEmpty(saveToken))
+                saveToken = Guid.NewGuid().ToString("N");
+            // Detect save-switch and clean up orphaned listings
+            TalentTradeManager.OnSaveSessionStart(saveToken);
             // Return any pawns that were listed in a previous session
             ReturnPendingPawns();
         }
@@ -43,6 +53,7 @@ namespace TalentTrade
 
             Scribe_Collections.Look(ref pendingReturnIds, "pendingReturnIds", LookMode.Value);
             Scribe_Collections.Look(ref pendingReturnData, "pendingReturnData", LookMode.Value);
+            Scribe_Values.Look(ref saveToken, "saveToken", null);
 
             if (pendingReturnIds == null) pendingReturnIds = new List<string>();
             if (pendingReturnData == null) pendingReturnData = new List<string>();
@@ -61,6 +72,11 @@ namespace TalentTrade
         public bool OwnsListing(string listingId)
         {
             return activeListingIds.Contains(listingId);
+        }
+
+        public HashSet<string> GetActiveListingIdsSnapshot()
+        {
+            return new HashSet<string>(activeListingIds);
         }
 
         /// <summary>
