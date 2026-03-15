@@ -12,10 +12,6 @@ namespace TalentTrade
     /// </summary>
     public static class PawnDeserializer
     {
-        // Security limits
-        private const int MAX_XML_LENGTH = 2 * 1024 * 1024; // 2MB max decompressed XML
-        private const int MAX_B64_LENGTH = 4 * 1024 * 1024; // 4MB max compressed data
-
         /// <summary>
         /// Full pipeline: Base64 → GZip decompress → XML → Pawn object.
         /// Returns null on failure. Does NOT spawn the pawn.
@@ -23,13 +19,6 @@ namespace TalentTrade
         public static Pawn Deserialize(string b64Compressed)
         {
             if (string.IsNullOrEmpty(b64Compressed)) return null;
-
-            // Security: reject oversized payloads
-            if (b64Compressed.Length > MAX_B64_LENGTH)
-            {
-                Log.Error("【三角洲贸易】Pawn data rejected: payload too large (" + b64Compressed.Length + " bytes)");
-                return null;
-            }
 
             string xml;
             try
@@ -39,27 +28,6 @@ namespace TalentTrade
             catch (Exception ex)
             {
                 Log.Error("【三角洲贸易】PawnDeserializer.Deserialize decompress failed: " + ex);
-                return null;
-            }
-
-            // Security: reject oversized XML
-            if (xml != null && xml.Length > MAX_XML_LENGTH)
-            {
-                Log.Error("【三角洲贸易】Pawn XML rejected: decompressed size too large (" + xml.Length + " chars)");
-                return null;
-            }
-
-            // Security: basic XML sanity check
-            if (!ValidateXmlSafety(xml))
-            {
-                Log.Error("【三角洲贸易】Pawn XML rejected: failed safety validation");
-                return null;
-            }
-
-            // Security: structural validation of pawn XML
-            if (!ValidatePawnStructure(xml))
-            {
-                Log.Error("【三角洲贸易】Pawn XML rejected: failed structural validation");
                 return null;
             }
 
@@ -73,105 +41,9 @@ namespace TalentTrade
                     return null;
                 }
                 PostProcessPawn(pawn);
-                Log.Message("【三角洲贸易】Pawn deserialized successfully.");
+                Log.Message("【三角洲贸易】Pawn 反序列化成功。注意：上方任何 hediff/need 警告是 Scribe 时序导致的预期行为，不影响功能。| Pawn deserialized successfully. Any hediff/need warnings above are expected due to Scribe timing and do not affect functionality.");
             }
             return pawn;
-        }
-
-        /// <summary>
-        /// Basic XML safety validation — reject obviously malicious or malformed data.
-        /// </summary>
-        private static bool ValidateXmlSafety(string xml)
-        {
-            if (string.IsNullOrEmpty(xml)) return false;
-
-            // Must start with XML-like content
-            string trimmed = xml.TrimStart();
-            if (!trimmed.StartsWith("<")) return false;
-
-            // Reject XML with external entity declarations (XXE prevention)
-            if (xml.IndexOf("<!ENTITY", StringComparison.OrdinalIgnoreCase) >= 0) return false;
-            if (xml.IndexOf("<!DOCTYPE", StringComparison.OrdinalIgnoreCase) >= 0) return false;
-            if (xml.IndexOf("SYSTEM", StringComparison.OrdinalIgnoreCase) >= 0 &&
-                xml.IndexOf("<!", StringComparison.Ordinal) >= 0) return false;
-
-            return true;
-        }
-
-        /// <summary>
-        /// Structural validation: ensure XML looks like a valid RimWorld Pawn, not arbitrary data.
-        /// </summary>
-        private static bool ValidatePawnStructure(string xml)
-        {
-            try
-            {
-                XmlDocument doc = new XmlDocument();
-                doc.XmlResolver = null; // Prevent XXE attacks
-                doc.LoadXml(xml);
-
-                XmlNode root = doc.DocumentElement;
-                if (root == null) return false;
-
-                // Root must be "saveable" (from DebugOutputFor) or contain one
-                XmlNode pawnNode = root;
-                if (root.Name != "saveable" && root["saveable"] != null)
-                    pawnNode = root["saveable"];
-
-                // Must have Class attribute pointing to a Pawn type
-                XmlAttribute classAttr = pawnNode.Attributes?["Class"];
-                if (classAttr == null) return false;
-                string className = classAttr.Value;
-                if (className.IndexOf("Pawn", StringComparison.Ordinal) < 0) return false;
-
-                // Must contain a <def> element (race definition)
-                if (pawnNode["def"] == null) return false;
-
-                // Must contain <kindDef> (pawn kind)
-                if (pawnNode["kindDef"] == null) return false;
-
-                // Reject excessive XML depth (> 50 levels) to prevent stack overflow attacks
-                if (GetMaxDepth(pawnNode, 0) > 50) return false;
-
-                // Reject excessive child node count (> 10000) to prevent memory bombs
-                if (CountNodes(pawnNode, 0) > 10000) return false;
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static int GetMaxDepth(XmlNode node, int current)
-        {
-            if (current > 50) return current;
-            int max = current;
-            foreach (XmlNode child in node.ChildNodes)
-            {
-                if (child.NodeType == XmlNodeType.Element)
-                {
-                    int d = GetMaxDepth(child, current + 1);
-                    if (d > max) max = d;
-                    if (max > 50) return max;
-                }
-            }
-            return max;
-        }
-
-        private static int CountNodes(XmlNode node, int current)
-        {
-            if (current > 10000) return current;
-            int count = current + 1;
-            foreach (XmlNode child in node.ChildNodes)
-            {
-                if (child.NodeType == XmlNodeType.Element)
-                {
-                    count = CountNodes(child, count);
-                    if (count > 10000) return count;
-                }
-            }
-            return count;
         }
 
         /// <summary>
@@ -190,7 +62,6 @@ namespace TalentTrade
             try
             {
                 XmlDocument doc = new XmlDocument();
-                doc.XmlResolver = null; // Prevent XXE attacks
                 doc.LoadXml(xml);
 
                 XmlNode pawnNode = doc.DocumentElement;
@@ -254,22 +125,6 @@ namespace TalentTrade
         private static void PostProcessPawn(Pawn pawn)
         {
             if (pawn == null) return;
-
-            // Security: validate race is a humanlike pawn (reject animals, mechanoids, etc.)
-            if (pawn.RaceProps == null || !pawn.RaceProps.Humanlike)
-            {
-                Log.Error("【三角洲贸易】PostProcess rejected: pawn is not humanlike (race=" + pawn.def?.defName + ")");
-                return;
-            }
-
-            // Security: cap skill levels to valid range
-            if (pawn.skills != null)
-            {
-                foreach (var sr in pawn.skills.skills)
-                {
-                    if (sr != null && sr.Level > 20) sr.Level = 20;
-                }
-            }
 
             // Regenerate Thing IDs to avoid conflicts
             pawn.SetForbidden(false, false);
