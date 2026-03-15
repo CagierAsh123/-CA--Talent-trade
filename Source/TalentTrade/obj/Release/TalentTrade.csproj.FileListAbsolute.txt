@@ -5,3 +5,4 @@ B:\rimworld-code\_SourceCode\Develop\【CA】人才贸易-Talent trade\Assemblie
 B:\rimworld-code\_SourceCode\Develop\【CA】人才贸易-Talent trade\Assemblies\TalentTrade.pdb
 B:\rimworld-code\_SourceCode\Develop\【CA】人才贸易-Talent trade\Source\TalentTrade\obj\Release\TalentTrade.dll
 B:\rimworld-code\_SourceCode\Develop\【CA】人才贸易-Talent trade\Source\TalentTrade\obj\Release\TalentTrade.pdb
+B:\rimworld-code\_SourceCode\Develop\【CA】人才贸易-Talent trade\Source\TalentTrade\obj\Release\TalentTrade.sourcelink.json

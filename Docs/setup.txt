@@ -1,13 +1,38 @@
 cd /root/relay
 cat > relay.py << 'ENDOFFILE'
 #!/usr/bin/env python3
-import base64,json,threading,time
+import base64,json,threading,time,hashlib,hmac
 from http.server import HTTPServer,BaseHTTPRequestHandler
 from urllib.parse import urlparse,parse_qs
 from collections import defaultdict
+API_KEY="tt-9f3a7c2e1b4d6058e7a2c9d4f1b3e5a8"
+SIGNING_KEY="tt-sign-b7e2f4a19c3d5068d1e4a7b2c8f0e3d6"
+MAX_BODY_BYTES=524288
+RATE_LIMIT_PER_IP=60
+RATE_WINDOW_SECONDS=60
 lock=threading.Lock()
 rooms=defaultdict(list)
 id_counter=[0]
+rate_lock=threading.Lock()
+rate_buckets=defaultdict(list)
+def check_rate_limit(ip):
+    now=time.time()
+    cutoff=now-RATE_WINDOW_SECONDS
+    with rate_lock:
+        bucket=rate_buckets[ip]
+        rate_buckets[ip]=[t for t in bucket if t>cutoff]
+        if len(rate_buckets[ip])>=RATE_LIMIT_PER_IP:return False
+        rate_buckets[ip].append(now)
+        return True
+def cleanup_rate():
+    while True:
+        time.sleep(120)
+        now=time.time()
+        cutoff=now-RATE_WINDOW_SECONDS*2
+        with rate_lock:
+            for ip in list(rate_buckets.keys()):
+                rate_buckets[ip]=[t for t in rate_buckets[ip] if t>cutoff]
+                if not rate_buckets[ip]:del rate_buckets[ip]
 def store(room,sender,eid,msg):
     with lock:
         id_counter[0]+=1
@@ -36,18 +61,39 @@ def cleanup():
                 if not rooms[rm]:del rooms[rm]
 class H(BaseHTTPRequestHandler):
     def log_message(self,*a):pass
+    def _check_auth(self):
+        key=self.headers.get("X-Api-Key","")
+        if key!=API_KEY:self._s(403,'{"error":"forbidden"}');return False
+        return True
+    def _verify_sig(self,body_bytes):
+        sig=self.headers.get("X-Signature","")
+        if not sig:self._s(403,'{"error":"missing signature"}');return False
+        expected=hmac.new(SIGNING_KEY.encode("utf-8"),body_bytes,hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig,expected):self._s(403,'{"error":"invalid signature"}');return False
+        return True
+    def _get_ip(self):
+        xff=self.headers.get("X-Forwarded-For")
+        if xff:return xff.split(",")[0].strip()
+        return self.client_address[0]
     def do_POST(self):
+        if not self._check_auth():return
         p=urlparse(self.path)
         if p.path!="/v1/raw":self._s(404,"not found");return
+        ip=self._get_ip()
+        if not check_rate_limit(ip):self._s(429,'{"error":"rate limited"}');return
+        cl=int(self.headers.get("Content-Length",0))
+        if cl>MAX_BODY_BYTES:self._s(413,'{"error":"too large"}');return
+        body_bytes=self.rfile.read(cl) if cl>0 else b""
+        if not body_bytes:self._s(400,"empty");return
+        if not self._verify_sig(body_bytes):return
+        body=body_bytes.decode("utf-8")
         rm=self.headers.get("X-Room","default")
         sn=self.headers.get("X-Sender","unknown")
         ei=self.headers.get("X-Event-Id","")
-        cl=int(self.headers.get("Content-Length",0))
-        body=self.rfile.read(cl).decode("utf-8") if cl>0 else ""
-        if not body:self._s(400,"empty");return
         mid=store(rm,sn,ei,body)
         self._s(200,json.dumps({"ok":True,"id":mid}))
     def do_GET(self):
+        if not self._check_auth():return
         p=urlparse(self.path)
         if p.path!="/v1/raw":self._s(404,"not found");return
         q=parse_qs(p.query)
@@ -74,13 +120,9 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods","GET,POST,OPTIONS")
 if __name__=="__main__":
     threading.Thread(target=cleanup,daemon=True).start()
+    threading.Thread(target=cleanup_rate,daemon=True).start()
     s=HTTPServer(("0.0.0.0",8080),H)
-    print("Relay running on :8080")
+    print("Relay running on :8080 (secured)")
     s.serve_forever()
 ENDOFFILE
 echo "=== relay.py written ==="
-nohup python3 /root/relay/relay.py > /root/relay/relay.log 2>&1 &
-sleep 1
-curl http://localhost:8080/v1/raw?room=test
-echo ""
-echo "=== done ==="

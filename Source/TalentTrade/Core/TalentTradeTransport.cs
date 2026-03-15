@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 
@@ -11,7 +12,8 @@ namespace TalentTrade
     internal static class TalentTradeTransport
     {
         private const string RelayBaseUrl = "http://114.55.115.143:8080";
-        private const string RelayApiKey = "";
+        private const string RelayApiKey = "tt-9f3a7c2e1b4d6058e7a2c9d4f1b3e5a8";
+        private const string RelaySigningKey = "tt-sign-b7e2f4a19c3d5068d1e4a7b2c8f0e3d6";
         private const string RelayRoom = "talent-trade";
 
         private static readonly object OutgoingLock = new object();
@@ -124,6 +126,20 @@ namespace TalentTrade
             }
         }
 
+        // --- HMAC signature ---
+
+        private static string ComputeHmacSha256(byte[] bodyBytes)
+        {
+            using (HMACSHA256 hmac = new HMACSHA256(Encoding.UTF8.GetBytes(RelaySigningKey)))
+            {
+                byte[] hash = hmac.ComputeHash(bodyBytes);
+                StringBuilder sb = new StringBuilder(hash.Length * 2);
+                for (int i = 0; i < hash.Length; i++)
+                    sb.Append(hash[i].ToString("x2"));
+                return sb.ToString();
+            }
+        }
+
         // --- Compression utilities ---
 
         public static string Compress(string rawData)
@@ -190,6 +206,7 @@ namespace TalentTrade
                 request.Headers["X-Room"] = RelayRoom;
                 request.Headers["X-Sender"] = outbound.SenderUuid;
                 request.Headers["X-Event-Id"] = outbound.EventId;
+                request.Headers["X-Signature"] = ComputeHmacSha256(bodyBytes);
 
                 using (Stream requestStream = request.GetRequestStream())
                 {
