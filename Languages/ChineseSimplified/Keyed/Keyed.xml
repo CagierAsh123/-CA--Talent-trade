@@ -14,6 +14,8 @@
   <TalentTrade_settingsCategory>Phinix 人才贸易</TalentTrade_settingsCategory>
   <TalentTrade_settingNotifications>启用交易消息提醒</TalentTrade_settingNotifications>
   <TalentTrade_settingNotificationsDesc>收到交易相关消息时显示游戏内提醒。</TalentTrade_settingNotificationsDesc>
+  <TalentTrade_settingDebugLog>启用调试日志</TalentTrade_settingDebugLog>
+  <TalentTrade_settingDebugLogDesc>在日志中显示详细的网络轮询和同步调试信息，仅在排查问题时开启。</TalentTrade_settingDebugLogDesc>
 
   <!-- Common -->
   <TalentTrade_ageUnit>岁</TalentTrade_ageUnit>
@@ -113,4 +115,9 @@
   <TalentTrade_buyLetterTitle>殖民者已售出</TalentTrade_buyLetterTitle>
   <TalentTrade_buyLetterText>{0} 购买了你的殖民者 {1}，售价 {2} 银。</TalentTrade_buyLetterText>
   <TalentTrade_ocPawnBlocked>该殖民者受 OC 身份保护，无法交易。不要问我为什么，去问绿米。</TalentTrade_ocPawnBlocked>
+
+  <!-- Version notification -->
+  <TalentTrade_versionTitle>人才贸易 {0}</TalentTrade_versionTitle>
+  <TalentTrade_versionText>人才贸易 mod 已加载，当前版本：{0}\n\n通过 Phinix 聊天界面访问交易功能。</TalentTrade_versionText>
+  <TalentTrade_listingExpired>挂牌超时：{0} 已通过空投返还。</TalentTrade_listingExpired>
 </LanguageData>

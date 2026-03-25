@@ -268,10 +268,18 @@ namespace TalentTrade
                     responseText = reader.ReadToEnd();
                 }
 
+                if (TalentTradeMod.Settings?.EnableDebugLog == true)
+                {
+                    Verse.Log.Message($"【三角洲贸易】Poll success, response length: {responseText.Length}");
+                }
                 ParseRawResponse(responseText);
             }
-            catch
+            catch (Exception ex)
             {
+                if (TalentTradeMod.Settings?.EnableDebugLog == true)
+                {
+                    Verse.Log.Warning($"【三角洲贸易】PollWorker error: {ex.Message}");
+                }
                 lock (StateLock)
                 {
                     nextPollUtc = DateTime.UtcNow.AddSeconds(2);

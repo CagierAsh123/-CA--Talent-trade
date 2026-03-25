@@ -14,6 +14,8 @@
   <TalentTrade_settingsCategory>Phinix Talent Trade</TalentTrade_settingsCategory>
   <TalentTrade_settingNotifications>Enable trade notifications</TalentTrade_settingNotifications>
   <TalentTrade_settingNotificationsDesc>Show in-game messages for trade events.</TalentTrade_settingNotificationsDesc>
+  <TalentTrade_settingDebugLog>Enable debug logging</TalentTrade_settingDebugLog>
+  <TalentTrade_settingDebugLogDesc>Show detailed polling and sync diagnostics in the log. Enable only while troubleshooting.</TalentTrade_settingDebugLogDesc>
 
   <!-- Common -->
   <TalentTrade_ageUnit> yrs</TalentTrade_ageUnit>
@@ -97,4 +99,9 @@
   <TalentTrade_buyLetterTitle>Colonist Sold</TalentTrade_buyLetterTitle>
   <TalentTrade_buyLetterText>{0} purchased your colonist {1} for {2} silver.</TalentTrade_buyLetterText>
   <TalentTrade_ocPawnBlocked>This colonist is protected by OC identity and cannot be traded. Don't ask me why, ask Lumi.</TalentTrade_ocPawnBlocked>
+
+  <!-- Version notification -->
+  <TalentTrade_versionTitle>Talent Trade {0}</TalentTrade_versionTitle>
+  <TalentTrade_versionText>Talent Trade mod loaded, current version: {0}\n\nAccess trading features through the Phinix chat interface.</TalentTrade_versionText>
+  <TalentTrade_listingExpired>Listing expired: {0} has been returned via drop pod.</TalentTrade_listingExpired>
 </LanguageData>

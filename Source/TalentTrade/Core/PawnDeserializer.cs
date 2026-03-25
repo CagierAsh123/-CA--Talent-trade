@@ -126,6 +126,10 @@ namespace TalentTrade
         {
             if (pawn == null) return;
 
+            bool isPrisoner = pawn.IsPrisoner;
+            bool isColonyMech = pawn.IsColonyMech;
+            bool isAnimal = pawn.RaceProps != null && pawn.RaceProps.Animal;
+
             // Regenerate Thing IDs to avoid conflicts
             pawn.SetForbidden(false, false);
             pawn.thingIDNumber = -1;
@@ -210,14 +214,27 @@ namespace TalentTrade
                 }
             }
 
-            // Fix Ideo
-            if (ModsConfig.IdeologyActive && pawn.ideo != null)
+            if (pawn.guest != null)
+            {
+                pawn.guest.SetGuestStatus(null, GuestStatus.Guest);
+            }
+
+            // Fix Ideo only for humanlikes that actually use ideology.
+            if (pawn.RaceProps != null && pawn.RaceProps.Humanlike && ModsConfig.IdeologyActive && pawn.ideo != null)
             {
                 Ideo receiverIdeo = Faction.OfPlayer?.ideos?.PrimaryIdeo;
                 if (receiverIdeo != null)
                 {
                     pawn.ideo.SetIdeo(receiverIdeo);
                 }
+            }
+
+            // Royal titles can keep a null-linked faction/title chain after transfer.
+            // Clearing royalty data is safer than leaving the pawn in a broken state that
+            // crashes bedroom requirement thoughts every tick.
+            if (ModsConfig.RoyaltyActive && pawn.royalty != null)
+            {
+                pawn.royalty = null;
             }
 
             // Clear invalid Thing references
@@ -253,6 +270,22 @@ namespace TalentTrade
             {
                 pawn.meleeVerbs.Notify_PawnDespawned();
             }
+
+            if (isAnimal)
+            {
+                pawn.ownership = null;
+                pawn.training = pawn.training ?? new Pawn_TrainingTracker(pawn);
+            }
+
+            if (isColonyMech)
+            {
+                pawn.relations?.ClearAllRelations();
+            }
+
+            if (isPrisoner && pawn.guest != null)
+            {
+                pawn.guest.SetGuestStatus(Faction.OfPlayer, GuestStatus.Prisoner);
+            }
         }
 
         /// <summary>
@@ -275,14 +308,24 @@ namespace TalentTrade
                 }
 
                 IntVec3 dropSpot = DropCellFinder.TradeDropSpot(map);
+                bool isPrisoner = pawn.IsPrisoner;
 
-                // Set pawn faction to player colony
                 if (pawn.Faction == null || pawn.Faction != Faction.OfPlayer)
                 {
                     pawn.SetFaction(Faction.OfPlayer);
                 }
 
+                if (isPrisoner && pawn.guest != null)
+                {
+                    pawn.guest.SetGuestStatus(Faction.OfPlayer, GuestStatus.Prisoner);
+                }
+
                 TradeUtility.SpawnDropPod(dropSpot, map, pawn);
+
+                if (isPrisoner && pawn.guest != null)
+                {
+                    pawn.guest.SetGuestStatus(Faction.OfPlayer, GuestStatus.Prisoner);
+                }
 
                 // Force refresh pawn graphics cache
                 pawn.Drawer.renderer.SetAllGraphicsDirty();

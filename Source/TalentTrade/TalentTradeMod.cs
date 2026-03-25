@@ -44,6 +44,17 @@ namespace TalentTrade
                 Settings.EnableNotifications = notifications;
             }
 
+            bool debugLog = Settings != null && Settings.EnableDebugLog;
+            listing.CheckboxLabeled(
+                "TalentTrade_settingDebugLog".Translate(),
+                ref debugLog,
+                "TalentTrade_settingDebugLogDesc".Translate()
+            );
+            if (Settings != null)
+            {
+                Settings.EnableDebugLog = debugLog;
+            }
+
             listing.End();
         }
     }

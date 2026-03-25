@@ -313,26 +313,19 @@ namespace TalentTrade
 
         private void ShowPawnPicker()
         {
-            List<Pawn> colonists = new List<Pawn>();
-            if (Find.CurrentMap != null)
-            {
-                foreach (Pawn p in Find.CurrentMap.mapPawns.FreeColonistsSpawned)
-                {
-                    colonists.Add(p);
-                }
-            }
+            List<Pawn> tradeablePawns = TradeablePawnUtility.GetTradeablePawns(Find.CurrentMap);
 
-            if (colonists.Count == 0)
+            if (tradeablePawns.Count == 0)
             {
                 Messages.Message("TalentTrade_noPawnsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
                 return;
             }
 
             List<FloatMenuOption> options = new List<FloatMenuOption>();
-            foreach (Pawn p in colonists)
+            foreach (Pawn p in tradeablePawns)
             {
                 Pawn captured = p;
-                options.Add(new FloatMenuOption(captured.LabelShortCap, delegate
+                options.Add(new FloatMenuOption(TradeablePawnUtility.GetLabel(captured), delegate
                 {
                     selectedPawn = captured;
                 }));

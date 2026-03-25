@@ -267,26 +267,19 @@ namespace TalentTrade
 
         private void ShowPawnPicker()
         {
-            List<Pawn> colonists = new List<Pawn>();
-            if (Find.CurrentMap != null)
-            {
-                foreach (Pawn p in Find.CurrentMap.mapPawns.FreeColonistsSpawned)
-                {
-                    colonists.Add(p);
-                }
-            }
+            List<Pawn> tradeablePawns = TradeablePawnUtility.GetTradeablePawns(Find.CurrentMap);
 
-            if (colonists.Count == 0)
+            if (tradeablePawns.Count == 0)
             {
                 Messages.Message("TalentTrade_noPawnsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
                 return;
             }
 
             List<FloatMenuOption> options = new List<FloatMenuOption>();
-            foreach (Pawn p in colonists)
+            foreach (Pawn p in tradeablePawns)
             {
                 Pawn captured = p;
-                options.Add(new FloatMenuOption(captured.LabelShortCap, delegate
+                options.Add(new FloatMenuOption(TradeablePawnUtility.GetLabel(captured), delegate
                 {
                     selectedPawn = captured;
                 }));
@@ -312,6 +305,16 @@ namespace TalentTrade
             {
                 Messages.Message("TalentTrade_ocPawnBlocked".Translate(), MessageTypeDefOf.RejectInput, false);
                 selectedPawn = null;
+                return;
+            }
+
+            // Local self-check: if this race def doesn't even exist here, don't allow listing.
+            if (selectedPawn.def == null || DefDatabase<ThingDef>.GetNamedSilentFail(selectedPawn.def.defName) == null)
+            {
+                string pawnName = TradeablePawnUtility.GetLabel(selectedPawn);
+                string raceName = selectedPawn.def != null ? selectedPawn.def.defName : "Unknown";
+                string message = "TalentTrade_raceIncompatible".Translate(pawnName, raceName);
+                Find.WindowStack.Add(new Dialog_MessageBox(message));
                 return;
             }
 

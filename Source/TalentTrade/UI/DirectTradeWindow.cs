@@ -243,32 +243,50 @@ namespace TalentTrade
 
         private void ShowPawnPicker(bool isInitiator)
         {
-            List<Pawn> colonists = new List<Pawn>();
-            if (Find.CurrentMap != null)
-            {
-                foreach (Pawn p in Find.CurrentMap.mapPawns.FreeColonistsSpawned)
-                {
-                    colonists.Add(p);
-                }
-            }
+            List<Pawn> tradeablePawns = TradeablePawnUtility.GetTradeablePawns(Find.CurrentMap);
 
-            if (colonists.Count == 0)
+            if (tradeablePawns.Count == 0)
             {
                 Messages.Message("TalentTrade_noPawnsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
                 return;
             }
 
             List<FloatMenuOption> options = new List<FloatMenuOption>();
-            foreach (Pawn p in colonists)
+            foreach (Pawn p in tradeablePawns)
             {
                 Pawn captured = p;
-                options.Add(new FloatMenuOption(captured.LabelShortCap, delegate
+                options.Add(new FloatMenuOption(TradeablePawnUtility.GetLabel(captured), delegate
                 {
-                    AddPawnToOffer(captured, isInitiator);
+                    TryAddPawnToOffer(captured, isInitiator);
                 }));
             }
 
             Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void TryAddPawnToOffer(Pawn pawn, bool isInitiator)
+        {
+            if (pawn == null) return;
+
+            string targetUuid = isInitiator ? trade.TargetUuid : trade.InitiatorUuid;
+            string pawnLabel = TradeablePawnUtility.GetLabel(pawn);
+            string raceDefName = pawn.def != null ? pawn.def.defName : "Unknown";
+
+            TalentTradeManager.RequestRaceCheck(pawn, targetUuid, delegate(TransferReport report)
+            {
+                if (report != null && report.HasMissing)
+                {
+                    string message = "TalentTrade_raceIncompatible".Translate(pawnLabel, raceDefName);
+                    if (!string.IsNullOrEmpty(report.ToSummary()))
+                    {
+                        message += "\n\n" + report.ToSummary();
+                    }
+                    Find.WindowStack.Add(new Dialog_MessageBox(message));
+                    return;
+                }
+
+                AddPawnToOffer(pawn, isInitiator);
+            });
         }
 
         private void AddPawnToOffer(Pawn pawn, bool isInitiator)

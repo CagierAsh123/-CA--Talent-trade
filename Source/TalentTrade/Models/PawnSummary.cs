@@ -15,6 +15,7 @@ namespace TalentTrade
         public string SkillsSummary = string.Empty;
         public string TraitsSummary = string.Empty;
         public string HealthSummary = "Healthy";
+        public string PawnKind = "Colonist";
 
         /// <summary>
         /// Extract a PawnSummary from an actual Pawn object.
@@ -24,20 +25,13 @@ namespace TalentTrade
             var summary = new PawnSummary();
             if (pawn == null) return summary;
 
-            // Name
-            summary.Name = pawn.Name != null ? pawn.Name.ToStringFull : pawn.LabelShort;
-
-            // Gender
+            summary.Name = pawn.Name != null ? pawn.Name.ToStringFull : pawn.LabelShortCap;
             summary.Gender = pawn.gender.ToString();
-
-            // Age
-            summary.BiologicalAge = (int)pawn.ageTracker.AgeBiologicalYearsFloat;
-
-            // Race
+            summary.BiologicalAge = pawn.ageTracker != null ? (int)pawn.ageTracker.AgeBiologicalYearsFloat : 0;
             summary.RaceDefName = pawn.def != null ? pawn.def.defName : "Human";
+            summary.PawnKind = GetPawnKindLabel(pawn);
 
-            // Skills
-            if (pawn.skills != null)
+            if (pawn.RaceProps != null && pawn.RaceProps.Humanlike && pawn.skills != null)
             {
                 var skillParts = new List<string>();
                 foreach (var skill in pawn.skills.skills)
@@ -50,8 +44,15 @@ namespace TalentTrade
                 }
                 summary.SkillsSummary = string.Join(", ", skillParts.ToArray());
             }
+            else if (pawn.RaceProps != null && pawn.RaceProps.Animal)
+            {
+                summary.SkillsSummary = "Animal";
+            }
+            else if (pawn.IsColonyMech)
+            {
+                summary.SkillsSummary = "Mechanoid";
+            }
 
-            // Traits
             if (pawn.story != null && pawn.story.traits != null)
             {
                 var traitParts = new List<string>();
@@ -61,8 +62,11 @@ namespace TalentTrade
                 }
                 summary.TraitsSummary = string.Join(", ", traitParts.ToArray());
             }
+            else if (pawn.IsPrisonerOfColony)
+            {
+                summary.TraitsSummary = "Prisoner";
+            }
 
-            // Health
             if (pawn.health != null && pawn.health.hediffSet != null)
             {
                 var hediffs = pawn.health.hediffSet.hediffs;
@@ -75,7 +79,8 @@ namespace TalentTrade
                     var healthParts = new List<string>();
                     foreach (var hediff in hediffs)
                     {
-                        healthParts.Add(hediff.LabelCap);
+                        if (hediff != null)
+                            healthParts.Add(hediff.LabelCap);
                     }
                     summary.HealthSummary = string.Join(", ", healthParts.ToArray());
                 }
@@ -94,7 +99,8 @@ namespace TalentTrade
                 RaceDefName,
                 SkillsSummary,
                 TraitsSummary,
-                HealthSummary
+                HealthSummary,
+                PawnKind
             });
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(raw));
         }
@@ -115,10 +121,10 @@ namespace TalentTrade
                 if (lines.Length >= 5) summary.SkillsSummary = lines[4];
                 if (lines.Length >= 6) summary.TraitsSummary = lines[5];
                 if (lines.Length >= 7) summary.HealthSummary = lines[6];
+                if (lines.Length >= 8) summary.PawnKind = lines[7];
             }
             catch
             {
-                // Return default summary on parse failure
             }
 
             return summary;
@@ -130,7 +136,22 @@ namespace TalentTrade
             if (Gender == "Male") genderSymbol = "♂";
             else if (Gender == "Female") genderSymbol = "♀";
 
-            return string.Concat(Name, " ", genderSymbol, " ", BiologicalAge.ToString(), "TalentTrade_ageUnit".Translate());
+            string agePart = string.Empty;
+            if (BiologicalAge > 0)
+            {
+                agePart = " " + BiologicalAge.ToString() + "TalentTrade_ageUnit".Translate().ToString();
+            }
+            string kindPart = string.IsNullOrEmpty(PawnKind) ? string.Empty : (" [" + PawnKind + "]");
+            return string.Concat(Name, " ", genderSymbol, agePart, kindPart).Trim();
+        }
+
+        private static string GetPawnKindLabel(Pawn pawn)
+        {
+            if (pawn == null) return "Colonist";
+            if (pawn.IsPrisonerOfColony) return "Prisoner";
+            if (pawn.IsColonyMech) return "Mech";
+            if (pawn.RaceProps != null && pawn.RaceProps.Animal) return "Animal";
+            return "Colonist";
         }
     }
 }

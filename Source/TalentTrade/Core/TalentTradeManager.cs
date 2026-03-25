@@ -399,6 +399,30 @@ namespace TalentTrade
             return sessionId;
         }
 
+        public static string RequestRaceCheck(Pawn pawn, string targetUuid, Action<TransferReport> onResult)
+        {
+            string localUuid = GetLocalUuid();
+            if (string.IsNullOrEmpty(localUuid) || string.IsNullOrEmpty(targetUuid) || pawn == null || pawn.def == null) return null;
+
+            string sessionId = Guid.NewGuid().ToString("N").Substring(0, 12);
+            DefManifest manifest = new DefManifest();
+            manifest.RaceDefs.Add(pawn.def.defName);
+            string defListStr = DefManifestHelper.SerializeManifest(manifest);
+            string b64DefList = TalentTradeTransport.Compress(defListStr);
+
+            if (onResult != null)
+            {
+                lock (DefExchangeLock)
+                {
+                    DefReportCallbacks[sessionId] = onResult;
+                }
+            }
+
+            string msg = TalentTradeProtocol.BuildDefManifest(sessionId, localUuid, targetUuid, b64DefList);
+            SendProtocol(msg);
+            return sessionId;
+        }
+
         /// <summary>
         /// Get a previously received def report by session ID. Returns null if not yet received.
         /// </summary>
@@ -534,6 +558,10 @@ namespace TalentTrade
 
         private static string BuildDedupKey(TalentTradeMessageType msgType, string[] parts)
         {
+            // Don't dedup mlist (heartbeat needs to update LastRefreshUtc)
+            if (msgType == TalentTradeMessageType.MarketList)
+                return null;
+
             // Use type + first ID field for dedup
             if (parts.Length > 3)
             {
@@ -574,11 +602,18 @@ namespace TalentTrade
             string listingId = parts[3];
             string sellerUuid = parts[4];
 
+            if (TalentTradeMod.Settings?.EnableDebugLog == true)
+            {
+                Log.Message($"【三角洲贸易】HandleMarketList: listingId={listingId}, sellerUuid={sellerUuid}, localUuid={GetLocalUuid()}");
+            }
+
             // Skip own listings — we are the authority for our own data.
-            // If we still have it locally, no need to re-register from relay echo.
-            // If we don't have it locally (e.g. after delist/exit), ignore the stale relay echo.
             if (sellerUuid == GetLocalUuid())
             {
+                if (TalentTradeMod.Settings?.EnableDebugLog == true)
+                {
+                    Log.Message($"【三角洲贸易】Skipping own listing {listingId}");
+                }
                 return;
             }
 
@@ -589,21 +624,38 @@ namespace TalentTrade
 
             PawnSummary summary = PawnSummary.FromBase64(b64Summary);
 
-            MarketListing listing = new MarketListing
-            {
-                Id = listingId,
-                SellerUuid = sellerUuid,
-                SellerName = sellerName,
-                Summary = summary,
-                PriceSilver = priceSilver,
-                State = MarketListingState.Active,
-                CreatedAtUtc = DateTime.UtcNow,
-                LastRefreshUtc = DateTime.UtcNow
-            };
-
             lock (MarketLock)
             {
-                MarketListings[listingId] = listing;
+                MarketListing existing;
+                if (MarketListings.TryGetValue(listingId, out existing))
+                {
+                    // Update LastRefreshUtc for heartbeat
+                    existing.LastRefreshUtc = DateTime.UtcNow;
+                    if (TalentTradeMod.Settings?.EnableDebugLog == true)
+                    {
+                        Log.Message($"【三角洲贸易】Updated heartbeat for listing {listingId}");
+                    }
+                }
+                else
+                {
+                    // New listing
+                    MarketListing listing = new MarketListing
+                    {
+                        Id = listingId,
+                        SellerUuid = sellerUuid,
+                        SellerName = sellerName,
+                        Summary = summary,
+                        PriceSilver = priceSilver,
+                        State = MarketListingState.Active,
+                        CreatedAtUtc = DateTime.UtcNow,
+                        LastRefreshUtc = DateTime.UtcNow
+                    };
+                    MarketListings[listingId] = listing;
+                    if (TalentTradeMod.Settings?.EnableDebugLog == true)
+                    {
+                        Log.Message($"【三角洲贸易】Added new listing {listingId} from {sellerName}, price={priceSilver}");
+                    }
+                }
             }
         }
 
@@ -1408,7 +1460,7 @@ namespace TalentTrade
             lastExpiryCheckUtc = now;
 
             string localUuid = GetLocalUuid();
-            List<string> expired = new List<string>();
+            List<MarketListing> expired = new List<MarketListing>();
 
             lock (MarketLock)
             {
@@ -1416,22 +1468,51 @@ namespace TalentTrade
                 {
                     MarketListing l = kvp.Value;
                     if (l.State != MarketListingState.Active) continue;
-                    // Don't expire our own listings
-                    if (l.SellerUuid == localUuid) continue;
                     if ((now - l.LastRefreshUtc).TotalMinutes > LISTING_EXPIRY_MINUTES)
                     {
-                        expired.Add(kvp.Key);
+                        expired.Add(l);
                     }
                 }
-                foreach (string id in expired)
+                foreach (MarketListing l in expired)
                 {
-                    MarketListings.Remove(id);
+                    MarketListings.Remove(l.Id);
+                    LocalPawnData.Remove(l.Id);
                 }
             }
 
             if (expired.Count > 0)
             {
                 Log.Message($"【三角洲贸易】Expired {expired.Count} stale listings");
+                foreach (MarketListing l in expired)
+                {
+                    if (l.SellerUuid == localUuid)
+                    {
+                        ReturnExpiredPawn(l);
+                    }
+                }
+            }
+        }
+
+        private static void ReturnExpiredPawn(MarketListing listing)
+        {
+            if (listing.HeldPawn != null && !listing.HeldPawn.Destroyed)
+            {
+                EnqueueMainThread(() =>
+                {
+                    DropPodUtility.DropThingsNear(
+                        DropCellFinder.TradeDropSpot(Find.CurrentMap),
+                        Find.CurrentMap,
+                        new List<Thing> { listing.HeldPawn },
+                        110,
+                        false,
+                        false,
+                        true);
+                    Messages.Message(
+                        "TalentTrade_listingExpired".Translate(listing.HeldPawn.LabelShortCap),
+                        new LookTargets(listing.HeldPawn),
+                        MessageTypeDefOf.NeutralEvent,
+                        false);
+                });
             }
         }
 

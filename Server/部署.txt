@@ -1,0 +1,195 @@
+# Relay 服务器部署文档
+
+## 服务器信息
+- IP: 114.55.115.143
+- 端口: 8080
+- 路径: /root/relay/relay.py
+
+## 部署步骤
+
+### 1. 上传 relay.py (兼容 Python 3.6+)
+```bash
+cat > /root/relay/relay.py << 'EOF'
+#!/usr/bin/env python3
+import base64,json,threading,time
+from http.server import HTTPServer,BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
+from urllib.parse import urlparse,parse_qs
+from collections import defaultdict
+lock=threading.Lock()
+rooms=defaultdict(list)
+id_counter=[0]
+def store(room,sender,eid,msg):
+    with lock:
+        id_counter[0]+=1
+        mid=id_counter[0]
+        ts=int(time.time()*1000)
+        rooms[room].append((mid,ts,sender,eid,msg))
+        return mid
+def fetch(room,after=0,limit=200,since=0):
+    with lock:
+        msgs=rooms.get(room,[])
+        r=[]
+        for mid,ts,s,e,m in msgs:
+            if mid<=after:continue
+            if since>0 and ts<since:continue
+            r.append((mid,m))
+            if len(r)>=limit:break
+        lid=r[-1][0] if r else after
+        return lid,r
+def cleanup():
+    while True:
+        time.sleep(300)
+        cut=int((time.time()-3600)*1000)
+        with lock:
+            for rm in list(rooms.keys()):
+                rooms[rm]=[m for m in rooms[rm] if m[1]>=cut]
+                if not rooms[rm]:del rooms[rm]
+class H(BaseHTTPRequestHandler):
+    timeout=10
+    def log_message(self,*a):pass
+    def do_POST(self):
+        try:
+            p=urlparse(self.path)
+            if p.path!="/v1/raw":self._s(404,"not found");return
+            rm=self.headers.get("X-Room","default")
+            sn=self.headers.get("X-Sender","unknown")
+            ei=self.headers.get("X-Event-Id","")
+            cl=int(self.headers.get("Content-Length",0))
+            body=self.rfile.read(cl).decode("utf-8") if cl>0 else ""
+            if not body:self._s(400,"empty");return
+            mid=store(rm,sn,ei,body)
+            self._s(200,json.dumps({"ok":True,"id":mid}))
+        except:pass
+    def do_GET(self):
+        try:
+            p=urlparse(self.path)
+            if p.path!="/v1/raw":self._s(404,"not found");return
+            q=parse_qs(p.query)
+            rm=q.get("room",["default"])[0]
+            ai=int(q.get("after_id",["0"])[0])
+            li=min(int(q.get("limit",["200"])[0]),1000)
+            si=int(q.get("since_ms",["0"])[0])
+            lid,msgs=fetch(rm,ai,li,si)
+            lines=[str(lid)]
+            for mid,m in msgs:
+                b=base64.b64encode(m.encode("utf-8")).decode("ascii")
+                lines.append("{}\t{}".format(mid,b))
+            self._s(200,"\n".join(lines))
+        except:pass
+    def do_OPTIONS(self):
+        self.send_response(200);self._ch();self.end_headers()
+    def _s(self,c,b):
+        self.send_response(c)
+        self.send_header("Content-Type","text/plain; charset=utf-8")
+        self._ch();self.end_headers()
+        self.wfile.write(b.encode("utf-8"))
+    def _ch(self):
+        self.send_header("Access-Control-Allow-Origin","*")
+        self.send_header("Access-Control-Allow-Headers","*")
+        self.send_header("Access-Control-Allow-Methods","GET,POST,OPTIONS")
+class ThreadedHTTPServer(ThreadingMixIn,HTTPServer):
+    daemon_threads=True
+if __name__=="__main__":
+    threading.Thread(target=cleanup,daemon=True).start()
+    s=ThreadedHTTPServer(("0.0.0.0",8080),H)
+    print("Relay running on :8080")
+    s.serve_forever()
+EOF
+
+chmod +x /root/relay/relay.py
+```
+
+### 2. 配置 systemd 服务
+```bash
+cat > /etc/systemd/system/talent-relay.service << 'EOF'
+[Unit]
+Description=Talent Trade Relay Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/relay
+ExecStart=/usr/bin/python3 /root/relay/relay.py
+Restart=always
+RestartSec=5
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable talent-relay
+systemctl start talent-relay
+```
+
+### 3. 管理命令
+```bash
+# 查看状态
+systemctl status talent-relay
+
+# 查看日志
+journalctl -u talent-relay -f
+
+# 重启服务
+systemctl restart talent-relay
+
+# 停止服务
+systemctl stop talent-relay
+
+# 检查端口
+netstat -tlnp | grep 8080
+```
+
+## 技术说明
+
+### relay.py 关键特性
+- **ThreadingMixIn**: 多线程处理请求，避免单线程阻塞（兼容 Python 3.6+）
+- **timeout=10**: 10秒超时，防止慢客户端卡住服务器
+- **daemon_threads=True**: 守护线程，主进程退出时自动清理
+- **try/except**: 异常捕获，防止单个请求崩溃整个服务
+- **自动清理**: 每5分钟清理1小时前的消息
+
+### 已知问题及解决方案
+**问题**: 服务运行一段时间后无响应（进程存活，端口监听，但不处理请求）
+**原因**: 旧版使用 HTTPServer 单线程，慢连接或异常请求会阻塞所有后续请求
+**解决**: 改用 ThreadingMixIn + HTTPServer 实现多线程 + 超时机制
+
+**注意**: 服务器 Python 版本为 3.6.8，不支持 ThreadingHTTPServer（需 3.7+），因此使用 ThreadingMixIn 手动实现
+
+## 故障排查
+
+### 服务无响应
+```bash
+# 1. 检查进程
+ps aux | grep relay.py
+
+# 2. 检查端口
+netstat -tlnp | grep 8080
+
+# 3. 本地测试
+curl -v http://127.0.0.1:8080/v1/raw?room=talent-trade&after_id=0&limit=10
+
+# 4. 重启服务
+systemctl restart talent-relay
+```
+
+### 防火墙检查
+```bash
+# 检查防火墙状态
+systemctl status firewalld
+
+# 如果开启，添加规则
+firewall-cmd --permanent --add-port=8080/tcp
+firewall-cmd --reload
+```
+
+### 安全组配置
+阿里云控制台 → ECS → 安全组 → 入方向规则
+- 端口: 8080
+- 协议: TCP
+- 授权对象: 0.0.0.0/0
