@@ -110,6 +110,8 @@ namespace TalentTrade
             for (int i = 0; i < contracts.Length; i++)
             {
                 if (contracts[i] == null) continue;
+                if ((contracts[i].State == RentalContractState.Listed || contracts[i].State == RentalContractState.Active)
+                    && !TradeablePawnUtility.CanRentPawn(contracts[i].Summary)) continue;
 
                 switch (viewMode)
                 {
@@ -255,9 +257,9 @@ namespace TalentTrade
             y += 36f;
 
             // Pawn selector
-            Widgets.Label(new Rect(inner.x, y, 120f, 28f), "TalentTrade_selectPawn".Translate());
+            Widgets.Label(new Rect(inner.x, y, 120f, 28f), "TalentTrade_selectRentalPawn".Translate());
             Rect pawnBtnRect = new Rect(inner.x + 130f, y, 200f, 28f);
-            string pawnLabel = selectedPawn != null ? selectedPawn.LabelShortCap : (string)"TalentTrade_select".Translate();
+            string pawnLabel = selectedPawn != null ? TradeablePawnUtility.GetLabel(selectedPawn) : (string)"TalentTrade_select".Translate();
             if (Widgets.ButtonText(pawnBtnRect, pawnLabel))
             {
                 ShowPawnPicker();
@@ -314,10 +316,11 @@ namespace TalentTrade
         private void ShowPawnPicker()
         {
             List<Pawn> tradeablePawns = TradeablePawnUtility.GetTradeablePawns(Find.CurrentMap);
+            tradeablePawns.RemoveAll(p => !TradeablePawnUtility.CanRentPawn(p));
 
             if (tradeablePawns.Count == 0)
             {
-                Messages.Message("TalentTrade_noPawnsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
+                Messages.Message("TalentTrade_rentalNoColonistsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
                 return;
             }
 
@@ -340,7 +343,14 @@ namespace TalentTrade
 
             if (!selectedPawn.Spawned || selectedPawn.Dead)
             {
-                Messages.Message("TalentTrade_noPawnsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
+                Messages.Message("TalentTrade_rentalNoColonistsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
+                selectedPawn = null;
+                return;
+            }
+
+            if (!TradeablePawnUtility.CanRentPawn(selectedPawn))
+            {
+                Messages.Message("TalentTrade_rentalColonistOnly".Translate(), MessageTypeDefOf.RejectInput, false);
                 selectedPawn = null;
                 return;
             }

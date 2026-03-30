@@ -25,7 +25,12 @@
   <TalentTrade_refresh>刷新</TalentTrade_refresh>
   <TalentTrade_search>搜索</TalentTrade_search>
   <TalentTrade_selectPawn>选择殖民者</TalentTrade_selectPawn>
+  <TalentTrade_selectTradeablePawn>选择可交易单位</TalentTrade_selectTradeablePawn>
+  <TalentTrade_selectRentalPawn>选择可出租殖民者</TalentTrade_selectRentalPawn>
   <TalentTrade_noPawnsAvailable>没有可用的殖民者。</TalentTrade_noPawnsAvailable>
+  <TalentTrade_noTradeablePawnsAvailable>没有可交易单位。</TalentTrade_noTradeablePawnsAvailable>
+  <TalentTrade_rentalNoColonistsAvailable>没有可出租的殖民者。</TalentTrade_rentalNoColonistsAvailable>
+  <TalentTrade_rentalColonistOnly>租借目前仅支持普通殖民者，不支持动物、机械体或囚犯。</TalentTrade_rentalColonistOnly>
   <TalentTrade_select>选择</TalentTrade_select>
 
   <!-- Market -->
@@ -55,6 +60,7 @@
   <TalentTrade_tradeMyOffer>我的报价</TalentTrade_tradeMyOffer>
   <TalentTrade_tradeTheirOffer>对方报价</TalentTrade_tradeTheirOffer>
   <TalentTrade_tradeAddPawn>+ 添加殖民者</TalentTrade_tradeAddPawn>
+  <TalentTrade_tradeAddUnit>+ 添加单位</TalentTrade_tradeAddUnit>
   <TalentTrade_tradeSilverAmount>银子数量</TalentTrade_tradeSilverAmount>
   <TalentTrade_tradeLock>锁定确认</TalentTrade_tradeLock>
   <TalentTrade_tradeWaitingLock>等待对方确认…</TalentTrade_tradeWaitingLock>
@@ -82,7 +88,6 @@
   <TalentTrade_rentalRentConfirm>确认租借 {0}？日租金: {1} 银，租 {2} 天，押金: {3} 银</TalentTrade_rentalRentConfirm>
   <TalentTrade_rentalDays>天数</TalentTrade_rentalDays>
   <TalentTrade_rentalSelectDays>选择天数</TalentTrade_rentalSelectDays>
-  <TalentTrade_rentalNoListings>暂无出租。</TalentTrade_rentalNoListings>
 
   <!-- Direct Trade extra -->
   <TalentTrade_tradeConfirmSend>确认发送</TalentTrade_tradeConfirmSend>
@@ -91,11 +96,15 @@
   <TalentTrade_tradeCompleted>交易完成！</TalentTrade_tradeCompleted>
   <TalentTrade_tradeCancelled>交易已取消。</TalentTrade_tradeCancelled>
   <TalentTrade_tradeRemovePawn>移除</TalentTrade_tradeRemovePawn>
+  <TalentTrade_pawnKindColonist>殖民者</TalentTrade_pawnKindColonist>
+  <TalentTrade_pawnKindAnimal>动物</TalentTrade_pawnKindAnimal>
+  <TalentTrade_pawnKindMech>机械体</TalentTrade_pawnKindMech>
+  <TalentTrade_pawnKindPrisoner>囚犯</TalentTrade_pawnKindPrisoner>
   <TalentTrade_tradeAcceptRequest>接受</TalentTrade_tradeAcceptRequest>
   <TalentTrade_tradeRejectRequest>拒绝</TalentTrade_tradeRejectRequest>
 
   <!-- Pawn transfer -->
-  <TalentTrade_transferReport>即将发送殖民者 "{0}" 给 {1}</TalentTrade_transferReport>
+  <TalentTrade_transferReport>即将发送可交易单位 "{0}" 给 {1}</TalentTrade_transferReport>
   <TalentTrade_transferRaceOk>✓ 种族: {0} — 对方已安装</TalentTrade_transferRaceOk>
   <TalentTrade_transferRaceFail>✗ 种族: {0} — 对方未安装，无法交易</TalentTrade_transferRaceFail>
   <TalentTrade_transferEquipRemoved>✗ 装备: {0} — 对方未安装，将留在本地</TalentTrade_transferEquipRemoved>
@@ -105,16 +114,16 @@
   <TalentTrade_transferConfirmSend>确认发送</TalentTrade_transferConfirmSend>
 
   <!-- Notifications -->
-  <TalentTrade_pawnReceivedTitle>收到殖民者</TalentTrade_pawnReceivedTitle>
-  <TalentTrade_pawnReceivedMessage>你收到了殖民者 {0}。</TalentTrade_pawnReceivedMessage>
-  <TalentTrade_pawnRestored>殖民者 {0} 已下架归还。</TalentTrade_pawnRestored>
+  <TalentTrade_pawnReceivedTitle>收到可交易单位</TalentTrade_pawnReceivedTitle>
+  <TalentTrade_pawnReceivedMessage>你收到了可交易单位 {0}。</TalentTrade_pawnReceivedMessage>
+  <TalentTrade_pawnRestored>可交易单位 {0} 已下架归还。</TalentTrade_pawnRestored>
   <TalentTrade_cannotDelistWrongSave>无法下架：该挂牌属于另一个存档。</TalentTrade_cannotDelistWrongSave>
   <TalentTrade_forceCleanup>强制清理</TalentTrade_forceCleanup>
   <TalentTrade_noListingsToClean>没有需要清理的挂牌。</TalentTrade_noListingsToClean>
-  <TalentTrade_cleanupDone>已清理 {0} 条挂牌。殖民者已送往亚空间。</TalentTrade_cleanupDone>
-  <TalentTrade_buyLetterTitle>殖民者已售出</TalentTrade_buyLetterTitle>
-  <TalentTrade_buyLetterText>{0} 购买了你的殖民者 {1}，售价 {2} 银。</TalentTrade_buyLetterText>
-  <TalentTrade_ocPawnBlocked>该殖民者受 OC 身份保护，无法交易。不要问我为什么，去问绿米。</TalentTrade_ocPawnBlocked>
+  <TalentTrade_cleanupDone>已清理 {0} 条挂牌。可交易单位已送往亚空间。</TalentTrade_cleanupDone>
+  <TalentTrade_buyLetterTitle>可交易单位已售出</TalentTrade_buyLetterTitle>
+  <TalentTrade_buyLetterText>{0} 购买了你的可交易单位 {1}，售价 {2} 银。</TalentTrade_buyLetterText>
+  <TalentTrade_ocPawnBlocked>该单位受 OC 身份保护，无法交易。不要问我为什么，去问绿米。</TalentTrade_ocPawnBlocked>
 
   <!-- Version notification -->
   <TalentTrade_versionTitle>人才贸易 {0}</TalentTrade_versionTitle>

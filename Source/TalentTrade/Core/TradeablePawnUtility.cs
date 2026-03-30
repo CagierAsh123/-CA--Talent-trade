@@ -21,24 +21,35 @@ namespace TalentTrade
 
         public static bool CanTrade(Pawn pawn)
         {
-            if (pawn == null || pawn.Dead || !pawn.Spawned || pawn.Destroyed)
-                return false;
-            if (pawn.Faction != Faction.OfPlayer)
+            if (!IsValidTradeTarget(pawn))
                 return false;
             if (pawn.IsSlaveOfColony)
                 return false;
-            if (pawn.RaceProps == null)
-                return false;
-
             if (pawn.IsPrisonerOfColony)
                 return true;
             if (pawn.IsColonyMech)
-                return true;
-            if (pawn.RaceProps.Humanlike && pawn.IsColonistPlayerControlled)
-                return true;
+                return pawn.Faction == Faction.OfPlayer;
+            if (pawn.RaceProps.Humanlike)
+                return pawn.Faction == Faction.OfPlayer && pawn.IsColonistPlayerControlled;
             if (pawn.RaceProps.Animal)
-                return true;
+                return pawn.Faction == Faction.OfPlayer;
             return false;
+        }
+
+        public static bool CanRentPawn(Pawn pawn)
+        {
+            if (!IsValidTradeTarget(pawn))
+                return false;
+            return pawn.Faction == Faction.OfPlayer
+                && pawn.RaceProps.Humanlike
+                && pawn.IsColonistPlayerControlled
+                && !pawn.IsPrisonerOfColony
+                && !pawn.IsSlaveOfColony;
+        }
+
+        public static bool CanRentPawn(PawnSummary summary)
+        {
+            return summary != null && (summary.PawnKind ?? "Colonist") == "Colonist";
         }
 
         public static string GetLabel(Pawn pawn)
@@ -47,6 +58,15 @@ namespace TalentTrade
                 return "???";
             PawnSummary summary = PawnSummary.FromPawn(pawn);
             return summary.GetDisplayLabel();
+        }
+
+        private static bool IsValidTradeTarget(Pawn pawn)
+        {
+            if (pawn == null || pawn.Dead || pawn.Destroyed || !pawn.Spawned)
+                return false;
+            if (pawn.RaceProps == null)
+                return false;
+            return true;
         }
 
         private static void AddRange(List<Pawn> result, IEnumerable<Pawn> pawns)

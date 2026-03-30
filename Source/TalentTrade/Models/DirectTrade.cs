@@ -42,5 +42,6 @@ namespace TalentTrade
         // Local only — held pawns/items that have been despawned
         public List<Pawn> HeldPawns = new List<Pawn>();
         public List<Thing> HeldItems = new List<Thing>();
+        public bool LocalExecuteSent;
     }
 }

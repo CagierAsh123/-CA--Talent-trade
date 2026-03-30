@@ -996,6 +996,11 @@ namespace TalentTrade
                 if (senderUuid == localUuid) return;
             }
 
+            if (!trade.LocalExecuteSent)
+            {
+                ExecuteDirectTrade(trade);
+            }
+
             // Spawn received pawns
             if (!string.IsNullOrEmpty(b64PawnData))
             {
@@ -1021,8 +1026,12 @@ namespace TalentTrade
 
             lock (TradeLock)
             {
-                trade.State = DirectTradeState.Completed;
-                ActiveTrades.Remove(tradeId);
+                DirectTrade currentTrade;
+                if (ActiveTrades.TryGetValue(tradeId, out currentTrade) && currentTrade == trade)
+                {
+                    trade.State = DirectTradeState.Completed;
+                    ActiveTrades.Remove(tradeId);
+                }
             }
         }
 
@@ -1082,6 +1091,10 @@ namespace TalentTrade
             string ownerName = TalentTradeProtocol.DecodeField(parts[9]);
 
             PawnSummary summary = PawnSummary.FromBase64(b64Summary);
+            if (!TradeablePawnUtility.CanRentPawn(summary))
+            {
+                return;
+            }
 
             RentalContract contract = new RentalContract
             {
@@ -1593,8 +1606,13 @@ namespace TalentTrade
 
         private static void ExecuteDirectTrade(DirectTrade trade)
         {
+            if (trade == null || trade.LocalExecuteSent) return;
+
             string localUuid = GetLocalUuid();
             if (string.IsNullOrEmpty(localUuid)) return;
+
+            trade.LocalExecuteSent = true;
+            trade.State = DirectTradeState.Executing;
 
             bool isInitiator = trade.InitiatorUuid == localUuid;
             TradeOffer myOffer = isInitiator ? trade.InitiatorOffer : trade.TargetOffer;
@@ -1617,12 +1635,6 @@ namespace TalentTrade
 
             string pawnMsg = TalentTradeProtocol.BuildTradeExecute(trade.Id, localUuid, sb.ToString(), "");
             SendProtocol(pawnMsg);
-
-            lock (TradeLock)
-            {
-                trade.State = DirectTradeState.Completed;
-                ActiveTrades.Remove(trade.Id);
-            }
         }
 
         private static void RestoreHeldPawns(DirectTrade trade)

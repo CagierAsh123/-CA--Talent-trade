@@ -10,6 +10,8 @@
 | [FILES.md](FILES.md) | 每个源文件的用途与关键 API |
 | [PROTOCOL.md](PROTOCOL.md) | 通信协议格式、消息类型一览 |
 | [PHASES.md](PHASES.md) | 开发阶段规划与当前进度 |
+| [TESTING.md](TESTING.md) | 本轮交易对象扩展的回归测试手册 |
+| [RENTAL_GAPS.md](RENTAL_GAPS.md) | 当前租借生命周期剩余缺口与后续建议 |
 
 ## 快速概览
 

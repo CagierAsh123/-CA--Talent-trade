@@ -126,9 +126,10 @@ namespace TalentTrade
         {
             if (pawn == null) return;
 
-            bool isPrisoner = pawn.IsPrisoner;
-            bool isColonyMech = pawn.IsColonyMech;
             bool isAnimal = pawn.RaceProps != null && pawn.RaceProps.Animal;
+            bool isMech = pawn.RaceProps != null && pawn.RaceProps.IsMechanoid;
+            bool isColonyMech = pawn.IsColonyMech || isMech;
+            bool isPrisoner = pawn.guest != null && pawn.guest.IsPrisoner;
 
             // Regenerate Thing IDs to avoid conflicts
             pawn.SetForbidden(false, false);
@@ -214,9 +215,15 @@ namespace TalentTrade
                 }
             }
 
+            if (pawn.Faction != Faction.OfPlayer)
+            {
+                pawn.SetFaction(Faction.OfPlayer);
+            }
+
             if (pawn.guest != null)
             {
-                pawn.guest.SetGuestStatus(null, GuestStatus.Guest);
+                if (isPrisoner)
+                    pawn.guest.SetGuestStatus(Faction.OfPlayer, GuestStatus.Prisoner);
             }
 
             // Fix Ideo only for humanlikes that actually use ideology.
@@ -230,11 +237,13 @@ namespace TalentTrade
             }
 
             // Royal titles can keep a null-linked faction/title chain after transfer.
-            // Clearing royalty data is safer than leaving the pawn in a broken state that
-            // crashes bedroom requirement thoughts every tick.
-            if (ModsConfig.RoyaltyActive && pawn.royalty != null)
+            // Replace with a fresh empty tracker instead of nulling — ThoughtWorker_BedroomRequirementsNotMet
+            // calls p.royalty.GetUnmetBedroomRequirements() without a null guard, so setting royalty=null
+            // causes a NullReferenceException every tick. A new empty tracker has no titles and returns
+            // no unmet requirements, which is exactly what we want.
+            if (pawn.RaceProps != null && pawn.RaceProps.Humanlike && ModsConfig.RoyaltyActive)
             {
-                pawn.royalty = null;
+                pawn.royalty = new RimWorld.Pawn_RoyaltyTracker(pawn);
             }
 
             // Clear invalid Thing references
@@ -279,6 +288,13 @@ namespace TalentTrade
 
             if (isColonyMech)
             {
+                try
+                {
+                    MechanitorUtility.ForceDisconnectMechFromOverseer(pawn);
+                }
+                catch
+                {
+                }
                 pawn.relations?.ClearAllRelations();
             }
 
@@ -308,7 +324,7 @@ namespace TalentTrade
                 }
 
                 IntVec3 dropSpot = DropCellFinder.TradeDropSpot(map);
-                bool isPrisoner = pawn.IsPrisoner;
+                bool isPrisoner = pawn.guest != null && pawn.guest.IsPrisoner;
 
                 if (pawn.Faction == null || pawn.Faction != Faction.OfPlayer)
                 {
@@ -321,6 +337,17 @@ namespace TalentTrade
                 }
 
                 TradeUtility.SpawnDropPod(dropSpot, map, pawn);
+
+                if (pawn.RaceProps != null && pawn.RaceProps.IsMechanoid)
+                {
+                    try
+                    {
+                        MechanitorUtility.ForceDisconnectMechFromOverseer(pawn);
+                    }
+                    catch
+                    {
+                    }
+                }
 
                 if (isPrisoner && pawn.guest != null)
                 {

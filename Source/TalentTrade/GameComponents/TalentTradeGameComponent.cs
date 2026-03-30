@@ -19,6 +19,9 @@ namespace TalentTrade
         // Persisted: unique identity for this save lineage
         private string saveToken;
 
+        // Persisted: last mod version the player has seen the notification for
+        private string lastSeenVersion;
+
         // Runtime only: track which listings belong to THIS save session
         private HashSet<string> activeListingIds = new HashSet<string>();
 
@@ -41,6 +44,9 @@ namespace TalentTrade
             TalentTradeManager.OnSaveSessionStart(saveToken);
             // Return any pawns that were listed in a previous session
             ReturnPendingPawns();
+            // Show version letter on first load or after mod update
+            VersionNotifier.TryNotify(lastSeenVersion);
+            lastSeenVersion = VersionNotifier.ModVersion;
         }
 
         public override void ExposeData()
@@ -54,6 +60,7 @@ namespace TalentTrade
             Scribe_Collections.Look(ref pendingReturnIds, "pendingReturnIds", LookMode.Value);
             Scribe_Collections.Look(ref pendingReturnData, "pendingReturnData", LookMode.Value);
             Scribe_Values.Look(ref saveToken, "saveToken", null);
+            Scribe_Values.Look(ref lastSeenVersion, "lastSeenVersion", null);
 
             if (pendingReturnIds == null) pendingReturnIds = new List<string>();
             if (pendingReturnData == null) pendingReturnData = new List<string>();

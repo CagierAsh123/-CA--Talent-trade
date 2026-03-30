@@ -226,9 +226,9 @@ namespace TalentTrade
             y += 36f;
 
             // Pawn selector
-            Widgets.Label(new Rect(inner.x, y, 120f, 28f), "TalentTrade_selectPawn".Translate());
+            Widgets.Label(new Rect(inner.x, y, 120f, 28f), "TalentTrade_selectTradeablePawn".Translate());
             Rect pawnBtnRect = new Rect(inner.x + 130f, y, 200f, 28f);
-            string pawnLabel = selectedPawn != null ? selectedPawn.LabelShortCap : (string)"TalentTrade_select".Translate();
+            string pawnLabel = selectedPawn != null ? TradeablePawnUtility.GetLabel(selectedPawn) : (string)"TalentTrade_select".Translate();
             if (Widgets.ButtonText(pawnBtnRect, pawnLabel))
             {
                 ShowPawnPicker();
@@ -271,7 +271,7 @@ namespace TalentTrade
 
             if (tradeablePawns.Count == 0)
             {
-                Messages.Message("TalentTrade_noPawnsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
+                Messages.Message("TalentTrade_noTradeablePawnsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
                 return;
             }
 
@@ -295,7 +295,7 @@ namespace TalentTrade
             // Prevent listing a pawn that is not on the map
             if (!selectedPawn.Spawned || selectedPawn.Dead)
             {
-                Messages.Message("TalentTrade_noPawnsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
+                Messages.Message("TalentTrade_noTradeablePawnsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
                 selectedPawn = null;
                 return;
             }

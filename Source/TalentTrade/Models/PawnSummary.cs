@@ -141,8 +141,24 @@ namespace TalentTrade
             {
                 agePart = " " + BiologicalAge.ToString() + "TalentTrade_ageUnit".Translate().ToString();
             }
-            string kindPart = string.IsNullOrEmpty(PawnKind) ? string.Empty : (" [" + PawnKind + "]");
+            string translatedKind = TranslatePawnKind(PawnKind);
+            string kindPart = string.IsNullOrEmpty(translatedKind) ? string.Empty : (" [" + translatedKind + "]");
             return string.Concat(Name, " ", genderSymbol, agePart, kindPart).Trim();
+        }
+
+        private static string TranslatePawnKind(string pawnKind)
+        {
+            switch (pawnKind ?? "Colonist")
+            {
+                case "Prisoner":
+                    return "TalentTrade_pawnKindPrisoner".Translate();
+                case "Mech":
+                    return "TalentTrade_pawnKindMech".Translate();
+                case "Animal":
+                    return "TalentTrade_pawnKindAnimal".Translate();
+                default:
+                    return "TalentTrade_pawnKindColonist".Translate();
+            }
         }
 
         private static string GetPawnKindLabel(Pawn pawn)

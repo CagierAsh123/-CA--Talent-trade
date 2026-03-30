@@ -3,21 +3,18 @@ using Verse;
 
 namespace TalentTrade
 {
-    [StaticConstructorOnStartup]
+    /// <summary>
+    /// Version constant. The actual notification is triggered from TalentTradeGameComponent.FinalizeInit().
+    /// </summary>
     internal static class VersionNotifier
     {
-        private const string ModVersion = "v1.5";
+        public const string ModVersion = "v2.0";
 
-        static VersionNotifier()
+        public static void TryNotify(string lastSeenVersion)
         {
-            if (Current.ProgramState == ProgramState.Playing)
-            {
-                SendVersionLetter();
-            }
-        }
+            if (lastSeenVersion == ModVersion)
+                return;
 
-        private static void SendVersionLetter()
-        {
             Find.LetterStack.ReceiveLetter(
                 "TalentTrade_versionTitle".Translate(ModVersion),
                 "TalentTrade_versionText".Translate(ModVersion),

@@ -114,7 +114,7 @@ namespace TalentTrade
 
             // Add pawn button
             Rect addBtn = new Rect(inner.x, y, 160f, ROW_HEIGHT);
-            if (Widgets.ButtonText(addBtn, "TalentTrade_tradeAddPawn".Translate()))
+            if (Widgets.ButtonText(addBtn, "TalentTrade_tradeAddUnit".Translate()))
             {
                 ShowPawnPicker(isInitiator);
             }
@@ -247,7 +247,7 @@ namespace TalentTrade
 
             if (tradeablePawns.Count == 0)
             {
-                Messages.Message("TalentTrade_noPawnsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
+                Messages.Message("TalentTrade_noTradeablePawnsAvailable".Translate(), MessageTypeDefOf.RejectInput, false);
                 return;
             }
 

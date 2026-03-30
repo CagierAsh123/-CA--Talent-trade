@@ -25,7 +25,12 @@
   <TalentTrade_refresh>Refresh</TalentTrade_refresh>
   <TalentTrade_search>Search</TalentTrade_search>
   <TalentTrade_selectPawn>Select Colonist</TalentTrade_selectPawn>
+  <TalentTrade_selectTradeablePawn>Select Tradeable Unit</TalentTrade_selectTradeablePawn>
+  <TalentTrade_selectRentalPawn>Select Rentable Colonist</TalentTrade_selectRentalPawn>
   <TalentTrade_noPawnsAvailable>No colonists available.</TalentTrade_noPawnsAvailable>
+  <TalentTrade_noTradeablePawnsAvailable>No tradeable units available.</TalentTrade_noTradeablePawnsAvailable>
+  <TalentTrade_rentalNoColonistsAvailable>No rentable colonists available.</TalentTrade_rentalNoColonistsAvailable>
+  <TalentTrade_rentalColonistOnly>Rental currently supports only regular colonists, not animals, mechs, or prisoners.</TalentTrade_rentalColonistOnly>
   <TalentTrade_select>Select</TalentTrade_select>
 
   <!-- Market -->
@@ -39,6 +44,8 @@
   <TalentTrade_marketPriceFormat>{0} silver</TalentTrade_marketPriceFormat>
   <TalentTrade_marketNoListings>No listings available.</TalentTrade_marketNoListings>
   <TalentTrade_marketBuyConfirm>Buy {0}? Price: {1} silver</TalentTrade_marketBuyConfirm>
+  <TalentTrade_cannotBuyNoRace>Cannot buy {0}: you are missing race mod "{1}"</TalentTrade_cannotBuyNoRace>
+  <TalentTrade_raceIncompatible>Cannot sell {0}: buyer is missing race mod "{1}"</TalentTrade_raceIncompatible>
 
   <!-- Direct Trade -->
   <TalentTrade_tradeWith>Trade</TalentTrade_tradeWith>
@@ -52,9 +59,17 @@
   <TalentTrade_tradeMyOffer>My Offer</TalentTrade_tradeMyOffer>
   <TalentTrade_tradeTheirOffer>Their Offer</TalentTrade_tradeTheirOffer>
   <TalentTrade_tradeAddPawn>+ Add Colonist</TalentTrade_tradeAddPawn>
+  <TalentTrade_tradeAddUnit>+ Add Unit</TalentTrade_tradeAddUnit>
   <TalentTrade_tradeSilverAmount>Silver Amount</TalentTrade_tradeSilverAmount>
   <TalentTrade_tradeLock>Lock In</TalentTrade_tradeLock>
   <TalentTrade_tradeWaitingLock>Waiting for other party...</TalentTrade_tradeWaitingLock>
+  <TalentTrade_tradeConfirmSend>Confirm Send</TalentTrade_tradeConfirmSend>
+  <TalentTrade_tradeUnlock>Unlock</TalentTrade_tradeUnlock>
+  <TalentTrade_tradeBothLocked>Both sides confirmed, executing trade...</TalentTrade_tradeBothLocked>
+  <TalentTrade_tradeCompleted>Trade completed!</TalentTrade_tradeCompleted>
+  <TalentTrade_tradeCancelled>Trade cancelled.</TalentTrade_tradeCancelled>
+  <TalentTrade_tradeAcceptRequest>Accept</TalentTrade_tradeAcceptRequest>
+  <TalentTrade_tradeRejectRequest>Reject</TalentTrade_tradeRejectRequest>
 
   <!-- Rental -->
   <TalentTrade_rentalListTitle>Rental Listings</TalentTrade_rentalListTitle>
@@ -76,9 +91,18 @@
   <TalentTrade_rentalPawnDiedTitle>Rented Colonist Died</TalentTrade_rentalPawnDiedTitle>
   <TalentTrade_rentalExpired>Rental for {0} has expired. Colonist returned automatically.</TalentTrade_rentalExpired>
   <TalentTrade_rentalExpiredTitle>Rental Expired</TalentTrade_rentalExpiredTitle>
+  <TalentTrade_rentalRentConfirm>Rent {0}? Daily rate: {1} silver, {2} days, deposit: {3} silver</TalentTrade_rentalRentConfirm>
+  <TalentTrade_rentalDays>Days</TalentTrade_rentalDays>
+  <TalentTrade_rentalSelectDays>Select Days</TalentTrade_rentalSelectDays>
+
+  <TalentTrade_tradeRemovePawn>Remove</TalentTrade_tradeRemovePawn>
+  <TalentTrade_pawnKindColonist>Colonist</TalentTrade_pawnKindColonist>
+  <TalentTrade_pawnKindAnimal>Animal</TalentTrade_pawnKindAnimal>
+  <TalentTrade_pawnKindMech>Mech</TalentTrade_pawnKindMech>
+  <TalentTrade_pawnKindPrisoner>Prisoner</TalentTrade_pawnKindPrisoner>
 
   <!-- Pawn transfer -->
-  <TalentTrade_transferReport>About to send colonist "{0}" to {1}</TalentTrade_transferReport>
+  <TalentTrade_transferReport>About to send tradeable unit "{0}" to {1}</TalentTrade_transferReport>
   <TalentTrade_transferRaceOk>OK Race: {0} — installed on receiver</TalentTrade_transferRaceOk>
   <TalentTrade_transferRaceFail>FAIL Race: {0} — not installed on receiver, cannot trade</TalentTrade_transferRaceFail>
   <TalentTrade_transferEquipRemoved>REMOVED Equipment: {0} — not installed, will stay local</TalentTrade_transferEquipRemoved>
@@ -88,17 +112,17 @@
   <TalentTrade_transferConfirmSend>Confirm Send</TalentTrade_transferConfirmSend>
 
   <!-- Notifications -->
-  <TalentTrade_pawnReceivedTitle>Colonist Received</TalentTrade_pawnReceivedTitle>
-  <TalentTrade_pawnReceivedMessage>You received colonist {0}.</TalentTrade_pawnReceivedMessage>
-  <TalentTrade_pawnRestored>Colonist {0} has been delisted and returned.</TalentTrade_pawnRestored>
+  <TalentTrade_pawnReceivedTitle>Tradeable Unit Received</TalentTrade_pawnReceivedTitle>
+  <TalentTrade_pawnReceivedMessage>You received tradeable unit {0}.</TalentTrade_pawnReceivedMessage>
+  <TalentTrade_pawnRestored>Tradeable unit {0} has been delisted and returned.</TalentTrade_pawnRestored>
   <TalentTrade_sellerOffline>Seller is offline, purchase cancelled.</TalentTrade_sellerOffline>
   <TalentTrade_cannotDelistWrongSave>Cannot delist: this listing belongs to another save.</TalentTrade_cannotDelistWrongSave>
   <TalentTrade_forceCleanup>Force Cleanup</TalentTrade_forceCleanup>
   <TalentTrade_noListingsToClean>No listings to clean up.</TalentTrade_noListingsToClean>
-  <TalentTrade_cleanupDone>Cleaned up {0} listings. Colonists sent to the warp.</TalentTrade_cleanupDone>
-  <TalentTrade_buyLetterTitle>Colonist Sold</TalentTrade_buyLetterTitle>
-  <TalentTrade_buyLetterText>{0} purchased your colonist {1} for {2} silver.</TalentTrade_buyLetterText>
-  <TalentTrade_ocPawnBlocked>This colonist is protected by OC identity and cannot be traded. Don't ask me why, ask Lumi.</TalentTrade_ocPawnBlocked>
+  <TalentTrade_cleanupDone>Cleaned up {0} listings. Tradeable units sent to the warp.</TalentTrade_cleanupDone>
+  <TalentTrade_buyLetterTitle>Tradeable Unit Sold</TalentTrade_buyLetterTitle>
+  <TalentTrade_buyLetterText>{0} purchased your tradeable unit {1} for {2} silver.</TalentTrade_buyLetterText>
+  <TalentTrade_ocPawnBlocked>This unit is protected by OC identity and cannot be traded. Don't ask me why, ask Lumi.</TalentTrade_ocPawnBlocked>
 
   <!-- Version notification -->
   <TalentTrade_versionTitle>Talent Trade {0}</TalentTrade_versionTitle>

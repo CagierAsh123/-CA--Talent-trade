@@ -76,6 +76,36 @@ namespace TalentTrade
 
             try
             {
+                // Disconnect mech from mechanitor control group before despawn
+                if (pawn.IsColonyMech || (pawn.RaceProps != null && pawn.RaceProps.IsMechanoid))
+                {
+                    try
+                    {
+                        MechanitorUtility.ForceDisconnectMechFromOverseer(pawn);
+                    }
+                    catch (Exception ex2)
+                    {
+                        Log.Warning("【三角洲贸易】ForceDisconnectMechFromOverseer failed (non-fatal): " + ex2);
+                    }
+                }
+
+                // If pawn is a mechanitor, disconnect all overseen mechs so they become uncontrolled
+                if (pawn.mechanitor != null)
+                {
+                    try
+                    {
+                        List<Pawn> mechs = new List<Pawn>(pawn.mechanitor.OverseenPawns);
+                        for (int i = 0; i < mechs.Count; i++)
+                        {
+                            MechanitorUtility.ForceDisconnectMechFromOverseer(mechs[i]);
+                        }
+                    }
+                    catch (Exception ex3)
+                    {
+                        Log.Warning("【三角洲贸易】Disconnect overseen mechs failed (non-fatal): " + ex3);
+                    }
+                }
+
                 // Remove pawn from texture atlas BEFORE despawn to prevent GC KeyNotFoundException
                 RemoveFromTextureAtlas(pawn);
 
